@@ -1,0 +1,26 @@
+opam-version: "1.2"
+version: "0.1"
+authors: "Shiguredo"
+maintainer: "szktty@shiguredo.jp"
+homepage: "https://github.com/shiguredo/eryngii/"
+bug-reports: "https://github.com/shiguredo/eryngii/issues"
+dev-repo: "git://https://github.com/shiguredo/eryngii.git"
+license: "Apache License, Version 2.0"
+build: [
+  [ "omake" ]
+]
+install: [
+  [ "omake" "install" "PREFIX=%{prefix}%" ]
+]
+remove: [
+  [ "omake" "uninstall" ]
+]
+depends: [
+  "ocamlfind" { build }
+  "omake" { build }
+  "core" { build }
+  "ucorelib" { build }
+]
+available: [
+  ocaml-version >= "4.03.0"
+]

@@ -22,7 +22,7 @@
 # Phony targets are scoped, so you probably want to declare them first.
 #
 
-.PHONY: clean
+.PHONY: install uninstall clean
 
 ########################################################################
 # Subdirectories.
@@ -149,6 +149,10 @@ OCamlGeneratedFiles(parser.ml lexer.ml)
 # Build an OCaml program
 #
 
+if $(not $(defined PREFIX))
+	PREFIX = /usr/local
+	export
+
 FILES[] =
 	main
 
@@ -158,7 +162,14 @@ PROGRAM = eryngii
 # OCAML_OTHER_LIBS +=
 # OCAML_LIB_FLAGS +=
 #
-.DEFAULT: $(OCamlProgram $(PROGRAM), $(FILES))
+OCamlProgram($(PROGRAM), $(FILES))
+
+.DEFAULT: $(PROGRAM)
+
+install: $(PROGRAM) $(OCamlProgramCopy install, $(PREFIX)/bin, $(PROGRAM))
+
+uninstall:
+	rm -f $(PREFIX)/bin/$(PROGRAM)
 
 clean:
 	rm -rf *.automaton *.conflicts *.annot *.opt *.omc *.cmi *.cmt *.cmti *.cmx *.o $(PROGRAM) parser.ml parser.mli lexer.ml

@@ -25,6 +25,12 @@ _build/
 setup.data
 setup.log
 
+# menhir generated files
+*parser.ml
+*parser.mli
+*lexer.ml
+*lexer.mli
+
 # generated programs
 eryngii
 

@@ -154,7 +154,10 @@ if $(not $(defined PREFIX))
 	export
 
 FILES[] =
+	located
+	location
 	main
+	position
 
 PROGRAM = eryngii
 # OCAML_LIBS +=

@@ -1,269 +1,207 @@
-%token <string> UIDENT
-%token <string> LIDENT
-%token <string> CHAR
-%token <string> STRING
-%token <int> INT
-%token <float> FLOAT
-%token LPAREN
-%token RPAREN
-%token LBRACK
-%token RBRACK
-%token LBRACE
-%token RBRACE
-%token COMMA
-%token DOT
-%token COLON
-%token SEMI
-%token USCORE           (* "_" *)
-%token NSIGN            (* "#" *)
-%token AND              (* "and" *)
-%token OR               (* "or" *)
-%token NOT              (* "not" *)
-%token LAND             (* "band" *)
-%token LOR              (* "bor" *)
-%token LXOR             (* "bxor" *)
-%token LNOT             (* "bnot" *)
-%token LSHIFT           (* "bsl" *)
-%token RSHIFT           (* "bsr" *)
-%token MATCH            (* "=" *)
-%token SEND             (* "!" *)
-%token BAR              (* "|" *)
-%token DBAR             (* "||" *)
-%token EQ
-%token NE
-%token XEQ
-%token XNE
-%token LT
-%token LE
-%token GT
-%token GE
-%token ADD
-%token SUB
-%token MUL              (* "*" *)
-%token DIV              (* "/" *)
-%token QUO              (* "div" *)
-%token REM              (* "rem" *)
-%token LIST_ADD         (* "++" *)
-%token LIST_DIFF        (* "--" *)
-%token RARROW           (* "->" *)
-%token LARROW           (* "<-" *)
-%token MODULE           (* "-module" *)
-%token EXPORT           (* "-export" *)
-%token BEGIN            (* "begin" *)
-%token END              (* "end" *)
-%token AFTER            (* "after" *)
-%token COND             (* "cond" *)
-%token LET              (* "let" *)
-%token WHEN             (* "when" *)
-%token OF               (* "of" *)
-%token CASE             (* "case" *)
-%token FUN              (* "fun" *)
-%token QUERY            (* "query" *)
-%token CATCH            (* "catch" *)
-%token IF               (* "if" *)
-%token RECEIVE          (* "receive" *)
+%token <Ast.token> UIDENT
+%token <Ast.token> LIDENT
+%token <Ast.token> CHAR
+%token <Ast.token> STRING
+%token <Ast.token> INT
+%token <Ast.token> FLOAT
+%token <Ast.token> LPAREN
+%token <Ast.token> RPAREN
+%token <Ast.token> LBRACK
+%token <Ast.token> RBRACK
+%token <Ast.token> LBRACE
+%token <Ast.token> RBRACE
+%token <Ast.token> COMMA
+%token <Ast.token> DOT
+%token <Ast.token> COLON
+%token <Ast.token> SEMI
+%token <Ast.token> USCORE           (* "_" *)
+%token <Ast.token> NSIGN            (* "#" *)
+%token <Ast.token> AND              (* "and" *)
+%token <Ast.token> OR               (* "or" *)
+%token <Ast.token> NOT              (* "not" *)
+%token <Ast.token> LAND             (* "band" *)
+%token <Ast.token> LOR              (* "bor" *)
+%token <Ast.token> LXOR             (* "bxor" *)
+%token <Ast.token> LNOT             (* "bnot" *)
+%token <Ast.token> LSHIFT           (* "bsl" *)
+%token <Ast.token> RSHIFT           (* "bsr" *)
+%token <Ast.token> MATCH            (* "=" *)
+%token <Ast.token> SEND             (* "!" *)
+%token <Ast.token> BAR              (* "|" *)
+%token <Ast.token> DBAR             (* "||" *)
+%token <Ast.token> EQ
+%token <Ast.token> NE
+%token <Ast.token> XEQ
+%token <Ast.token> XNE
+%token <Ast.token> LT
+%token <Ast.token> LE
+%token <Ast.token> GT
+%token <Ast.token> GE
+%token <Ast.token> PLUS
+%token <Ast.token> MINUS
+%token <Ast.token> MUL              (* "*" *)
+%token <Ast.token> DIV              (* "/" *)
+%token <Ast.token> QUO              (* "div" *)
+%token <Ast.token> REM              (* "rem" *)
+%token <Ast.token> LIST_ADD         (* "++" *)
+%token <Ast.token> LIST_DIFF        (* "--" *)
+%token <Ast.token> RARROW           (* "->" *)
+%token <Ast.token> LARROW           (* "<-" *)
+%token <Ast.token> MODULE           (* "-module" *)
+%token <Ast.token> EXPORT           (* "-export" *)
+%token <Ast.token> BEGIN            (* "begin" *)
+%token <Ast.token> END              (* "end" *)
+%token <Ast.token> AFTER            (* "after" *)
+%token <Ast.token> COND             (* "cond" *)
+%token <Ast.token> LET              (* "let" *)
+%token <Ast.token> WHEN             (* "when" *)
+%token <Ast.token> OF               (* "of" *)
+%token <Ast.token> CASE             (* "case" *)
+%token <Ast.token> FUN              (* "fun" *)
+%token <Ast.token> QUERY            (* "query" *)
+%token <Ast.token> CATCH            (* "catch" *)
+%token <Ast.token> IF               (* "if" *)
+%token <Ast.token> RECEIVE          (* "receive" *)
 %token EOF
 
-%start <Syntax.ast option> prog
+%start <Ast.t option> module_
 
 %%
 
-prog:
+module_:
   | EOF { None }
-  | module_decl { Some $1 }
-  ;
+  | module_decls { Some $1 }
 
-module_decl:
-  | attrs forms EOF { Syntax.Prog ($1, $2) }
-  ;
+module_decls:
+  | module_attrs fun_decls EOF
+  { Ast.Module {
+      module_attrs = $1;
+      module_decls = $2; }
+  }
 
-attrs:
-  | attr { [$1] }
-  | attr attrs { [$1] @ $2 }
-  ;
 
-(* TODO *)
-attr:
-  | mod_attr { $1 }
-  | export_attr { $1 }
-  ;
+module_attrs:
+  | module_attr* { $1 }
 
-mod_attr:
-  | MODULE LPAREN LIDENT RPAREN { Syntax.ModAttr($3) }
-  ;
+module_attr:
+  | MINUS LIDENT LPAREN exp RPAREN DOT { $1 }
 
-export_attr:
-  | EXPORT LPAREN export_funcs_opt RPAREN { Syntax.ExportAttr($3) }
-  ;
+fun_decls:
+  | fun_decl* { $1 }
 
-export_funcs_opt:
-  | LBRACK RBRACK { [] }
-  | LBRACK export_funcs RBRACK { $2 }
-  ;
+fun_decl:
+  | fun_clauses DOT { Ast.funDecl $1 }
 
-export_funcs:
-  | export_func { [$1] }
-  | export_func COMMA export_funcs { [$1] @ $3 }
-  ;
+fun_clauses:
+  | fun_clause { [$1] }
+  | fun_clauses SEMI fun_clause { $1 @ [$3] }
 
-export_func:
-  | LIDENT DIV INT { { Syntax.type_name = $1; Syntax.type_arity = $3; } }
-  ;
+fun_clause:
+  | LIDENT fun_clause_def
+    { { $2 with Ast.fun_clause_name = Some $1 } }
 
-forms:
-  | form { [$1] }
-  | forms form { $1 @ [$2] }
-  ;
+fun_clause_def:
+  | LPAREN patterns_opt RPAREN guard_clause_opt clause_body
+    { { Ast.fun_clause_name = None;
+        Ast.fun_clause_patterns = $2;
+        Ast.fun_guard_clause = $4;
+        Ast.fun_clause_body = $5; } }
 
-form:
-  | func_decl { $1 }
-  ;
-
-func_decl:
-  | func_clauses DOT { Syntax.FuncDecl $1 }
-  ;
-
-func_clauses:
-  | func_clause { [$1] }
-  | func_clauses SEMI func_clause { $1 @ [$3] }
-  ;
-
-func_clause:
-  | LIDENT func_clause_def
-    { { $2 with Syntax.func_clause_name = Some $1 } }
-  ;
-
-func_clause_def:
-  | LPAREN patterns_opt RPAREN clause_guard_opt clause_body
-    { { Syntax.func_clause_name = None;
-        Syntax.func_clause_patterns = $2;
-        Syntax.func_clause_guard = $4;
-        Syntax.func_clause_body = $5; } }
-  ;
-
-clause_guard_opt:
-  | clause_guard { $1 }
+guard_clause_opt:
+  | guard_clause { $1 }
   | (* empty *) { [] }
-  ;
 
-clause_guard:
+guard_clause:
   | WHEN guard { $2 }
-  ;
 
 guard:
   | guard_test { [$1] }
   | guard COMMA guard_test { $1 @ [$3] }
-  ;
 
 guard_test:
   | atom { $1 } (* true only *)
   | guard_recognizer { $1 }
   | guard_term_comparison { $1 }
-  | LPAREN guard_test RPAREN { Syntax.GuardParenTest $2 }
-  ;
+  | LPAREN guard_test RPAREN { Ast.GuardParenTest $2 }
 
 guard_recognizer:
-  | LIDENT LPAREN guard_expr RPAREN { Syntax.GuardFuncCallExpr ($1, $3) }
-  ;
+  | LIDENT LPAREN guard_exp RPAREN { Ast.Guardfunallexp ($1, $3) }
 
 guard_term_comparison:
-  | guard_expr compare_op guard_expr { Syntax.GuardBinExpr ($1, $2, $3) }
-  ;
+  | guard_exp compare_op guard_exp { Ast.GuardBinexp ($1, $2, $3) }
 
-guard_expr:
-  | guard_shift_expr { $1 }
-  ;
- 
-guard_shift_expr:
-  | guard_shift_expr shift_op guard_mul_expr { Syntax.GuardBinExpr ($1, $2, $3) }
-  | guard_mul_expr { $1 }
-  ;
+guard_exp:
+  | guard_shift_exp { $1 }
 
-guard_mul_expr:
-  | guard_mul_expr mul_op guard_prefix_expr { Syntax.GuardBinExpr ($1, $2, $3) }
-  ;
+guard_shift_exp:
+  | guard_shift_exp shift_op guard_mul_exp { Ast.GuardBinexp ($1, $2, $3) }
+  | guard_mul_exp { $1 }
 
-guard_prefix_expr:
-  | prefix_op guard_app_expr { Syntax.GuardUnaryExpr ($2, $1) }
-  | guard_app_expr { $1 }
-  ;
+guard_mul_exp:
+  | guard_mul_exp mul_op guard_prefix_exp { Ast.GuardBinexp ($1, $2, $3) }
 
-guard_app_expr:
-  | LIDENT LPAREN guard_exprs_opt RPAREN { Syntax.GuardAppExpr ($1, $3) }
-  | guard_record_expr { $1 }
-  | guard_primary_expr { $1 }
-  ;
+guard_prefix_exp:
+  | prefix_op guard_app_exp { Ast.GuardUnaryexp ($2, $1) }
+  | guard_app_exp { $1 }
 
-guard_exprs_opt:
-  | guard_exprs { $1 }
+guard_app_exp:
+  | LIDENT LPAREN guard_exps_opt RPAREN { Ast.GuardAppexp ($1, $3) }
+  | guard_record_exp { $1 }
+  | guard_primary_exp { $1 }
+
+guard_exps_opt:
+  | guard_exps { $1 }
   | (* empty *) { [] }
-  ;
 
-guard_exprs:
-  | guard_expr { [$1] }
-  | guard_exprs COMMA guard_expr { $1 @ [$3] }
-  ;
+guard_exps:
+  | guard_exp { [$1] }
+  | guard_exps COMMA guard_exp { $1 @ [$3] }
 
-guard_record_expr:
-  | guard_primary_expr_opt NSIGN LIDENT DOT LIDENT
-    { Syntax.GuardRecordExpr ($1, $3, $5) }
-  ;
+guard_record_exp:
+  | guard_primary_exp_opt NSIGN LIDENT DOT LIDENT
+    { Ast.GuardRecordexp ($1, $3, $5) }
 
-guard_primary_expr_opt:
-  | guard_primary_expr { Some $1 }
+guard_primary_exp_opt:
+  | guard_primary_exp { Some $1 }
   | (* empty *) { None }
-  ;
 
-guard_primary_expr:
+guard_primary_exp:
   | var { $1 }
   | atomic { $1 }
   | guard_list_skel { $1 }
   | guard_tuple_skel { $1 }
-  | LPAREN guard_expr RPAREN { Syntax.GuardParenExpr $2 }
-  ;
+  | LPAREN guard_exp RPAREN { Ast.GuardParenexp $2 }
 
 guard_list_skel:
-  | LBRACK RBRACK { Syntax.GuardList [] }
-  | LBRACK guard_exprs guard_list_skel_tail_opt RBRACK
-    { Syntax.GuardList ($2, $3) }
-  ;
+  | LBRACK RBRACK { Ast.GuardList [] }
+  | LBRACK guard_exps guard_list_skel_tail_opt RBRACK
+    { Ast.GuardList ($2, $3) }
 
 guard_list_skel_tail_opt:
-  | BAR guard_expr { Some $2 }
+  | BAR guard_exp { Some $2 }
   | (* empty *) { None }
-  ;
 
 guard_tuple_skel:
-  | LBRACE guard_exprs_opt RBRACE { Syntax.GuardTuple $2 }
-  ;
-
-clause_body:
-  | RARROW body { $2 }
-  ;
+  | LBRACE guard_exps_opt RBRACE { Ast.GuardTuple $2 }
 
 body:
-  | exprs { Syntax.Body $1 }
-  ;
+  | exps { Ast.Body $1 }
 
-exprs:
-  | expr { [$1] }
-  | exprs COMMA expr { $1 @ [$3] }
-  ;
+exps:
+  | exp { [$1] }
+  | exps COMMA exp { $1 @ [$3] }
 
-exprs_opt:
-  | exprs { $1 }
+exps_opt:
+  | exps { $1 }
   | (* empty *) { [] }
-  ;
 
-expr:
-  | CATCH expr { Syntax.CatchExpr $2 }
-  | match_expr { $1 }
-  ;
+exp:
+  | CATCH exp { Ast.Catchexp $2 }
+  | match_exp { $1 }
 
-match_expr:
-  | pattern MATCH match_expr { Syntax.BinExpr($1, Syntax.OpMatch, $3) }
-  | send_expr { $1 }
-  ;
+match_exp:
+  | pattern MATCH match_exp { Ast.Binexp($1, Ast.OpMatch, $3) }
+  | send_exp { $1 }
 
 pattern:
   (*| atomic { $1 }*)
@@ -272,316 +210,265 @@ pattern:
   (*| tuple_pattern { $1 }*)
   (*| record_pattern { $1 }*)
   (*| list_pattern { $1 }*)
-  ;
 
 universal_pattern:
-  | USCORE { Syntax.Universal }
-  ;
+  | USCORE { Ast.Universal }
 
 tuple_pattern:
-  | LBRACE patterns_opt RBRACE { Syntax.Tuple $2 }
-  ;
+  | LBRACE patterns_opt RBRACE { Ast.Tuple $2 }
 
 list_pattern:
-  | LBRACK RBRACK { Syntax.List ([], None) }
-  | LBRACK patterns list_pattern_tail_opt RBRACK { Syntax.List ($2, $3) }
-  ;
+  | LBRACK RBRACK { Ast.List ([], None) }
+  | LBRACK patterns list_pattern_tail_opt RBRACK { Ast.List ($2, $3) }
 
 list_pattern_tail_opt:
   | pattern { Some $1 }
   | (* empty *) { None }
-  ;
 
 patterns:
   | pattern { [$1] }
   | patterns COMMA pattern { $1 @ [$3] }
-  ;
 
 patterns_opt:
   | patterns { $1 }
   | (* empty *) { [] }
-  ;
 
 record_pattern:
-  | NSIGN record_type record_pattern_tuple { Syntax.Record ($2, $3) }
-  ;
+  | NSIGN record_type record_pattern_tuple { Ast.Record ($2, $3) }
 
 record_type:
   | atom { $1 }
-  ;
 
 record_pattern_tuple:
   | LBRACE record_field_patterns RBRACE { $2 }
   | LBRACE RBRACE { [] }
-  ;
 
 record_field_patterns:
   | record_field_pattern { [$1] }
   | record_field_patterns COMMA record_field_pattern { $1 @ [$3] }
-  ;
 
 record_field_pattern:
-  | record_field_name MATCH pattern { Syntax.Assoc ($1, $3) }
-  ;
+  | record_field_name MATCH pattern { Ast.Assoc ($1, $3) }
 
 record_field_name:
   | atom { $1 }
-  ;
 
-send_expr:
-  | compare_expr SEND send_expr { Syntax.BinExpr($1, Syntax.OpSend, $3) }
-  | compare_expr { $1 }
-  ;
+send_exp:
+  | compare_exp SEND send_exp { Ast.Binexp($1, Ast.OpSend, $3) }
+  | compare_exp { $1 }
 
-compare_expr:
-  | list_conc_expr compare_op list_conc_expr { Syntax.BinExpr($1, $2, $3) }
-  | list_conc_expr { $1 }
-  ;
+compare_exp:
+  | list_conc_exp compare_op list_conc_exp { Ast.Binexp($1, $2, $3) }
+  | list_conc_exp { $1 }
 
 compare_op:
-  | EQ { Syntax.OpEq }
-  | NE { Syntax.OpNe }
-  | XEQ { Syntax.OpXEq }
-  | XNE { Syntax.OpXNe }
-  | GT { Syntax.OpGt }
-  | GE { Syntax.OpGe }
-  | LT { Syntax.OpLt }
-  | LE { Syntax.OpLe }
-  ;
+  | EQ { Ast.OpEq }
+  | NE { Ast.OpNe }
+  | XEQ { Ast.OpXEq }
+  | XNE { Ast.OpXNe }
+  | GT { Ast.OpGt }
+  | GE { Ast.OpGe }
+  | LT { Ast.OpLt }
+  | LE { Ast.OpLe }
 
-list_conc_expr:
-  | shift_expr list_conc_op list_conc_expr { Syntax.BinExpr($1, $2, $3) }
-  | shift_expr { $1 }
-  ;
+list_conc_exp:
+  | shift_exp list_conc_op list_conc_exp { Ast.Binexp($1, $2, $3) }
+  | shift_exp { $1 }
 
 list_conc_op:
-  | LIST_ADD { Syntax.OpListAdd }
-  | LIST_DIFF { Syntax.OpListDiff }
-  ;
+  | LIST_ADD { Ast.OpListAdd }
+  | LIST_DIFF { Ast.OpListDiff }
 
-shift_expr:
-  | shift_expr shift_op mul_expr { Syntax.BinExpr($1, $2, $3) }
-  | mul_expr { $1 }
-  ;
-  
+shift_exp:
+  | shift_exp shift_op mul_exp { Ast.Binexp($1, $2, $3) }
+  | mul_exp { $1 }
+
 shift_op:
-  | ADD { Syntax.OpAdd }
-  | SUB { Syntax.OpSub }
-  | LOR { Syntax.OpLOr }
-  | LXOR { Syntax.OpLXor }
-  | LSHIFT { Syntax.OpLShift }
-  | RSHIFT { Syntax.OpRShift }
-  ;
+  | PLUS { Ast.Op_add }
+  | MINUS { Ast.Op_sub }
+  | LOR { Ast.Op_lor }
+  | LXOR { Ast.Op_lxor }
+  | LSHIFT { Ast.Op_lshift }
+  | RSHIFT { Ast.Op_rshift }
 
-mul_expr:
-  | mul_expr mul_op prefix_expr { Syntax.BinExpr($1, $2, $3) }
-  | mul_expr AND prefix_expr { Syntax.BinExpr($1, Syntax.OpAnd, $3) }
-  | prefix_expr { $1 }
-  ;
+mul_exp:
+  | mul_exp mul_op prefix_exp { Ast.Binexp($1, $2, $3) }
+  | mul_exp AND prefix_exp { Ast.Binexp($1, Ast.OpAnd, $3) }
+  | prefix_exp { $1 }
 
 mul_op:
-  | MUL { Syntax.OpMul }
-  | DIV { Syntax.OpDiv }
-  | QUO { Syntax.OpQuo }
-  | REM { Syntax.OpRem }
-  | LAND { Syntax.OpLAnd }
-  ;
+  | MUL { Ast.Op_mul }
+  | DIV { Ast.Op_div }
+  | QUO { Ast.Op_quo }
+  | REM { Ast.Op_rem }
+  | LAND { Ast.Op_land }
 
-prefix_expr:
-  | prefix_op record_expr { Syntax.UnaryExpr($2, $1) }
-  | record_expr { $1 }
-  ;
+prefix_exp:
+  | prefix_op record_exp { Ast.Unaryexp($2, $1) }
+  | record_exp { $1 }
 
 prefix_op:
-  | ADD { Syntax.OpPos }
-  | SUB { Syntax.OpNeg }
-  | NOT { Syntax.OpNot }
-  | LNOT { Syntax.OpLNot }
-  ;
+  | PLUS { Ast.Op_pos }
+  | MINUS { Ast.Op_neg }
+  | NOT { Ast.Op_not }
+  | LNOT { Ast.Op_lnot }
 
-record_expr:
+record_exp:
 (*
-  | record_expr_opt NSIGN record_type DOT record_field_name
-    { Syntax.RecordCreationExpr ($1, $3, $5) }
-  | record_expr_opt NSIGN record_type record_update_tuple
-    { Syntax.RecordAccessExpr ($1, $3, $4) }
+  | record_exp_opt NSIGN record_type DOT record_field_name
+    { Ast.RecordCreationexp ($1, $3, $5) }
+  | record_exp_opt NSIGN record_type record_update_tuple
+    { Ast.RecordAccessexp ($1, $3, $4) }
 *)
-  | app_expr { $1 }
-  ;
+  | app_exp { $1 }
 
-record_expr_opt:
-  | record_expr { Some $1 }
+record_exp_opt:
+  | record_exp { Some $1 }
   | (* empty *) { None }
-  ;
 
 record_update_tuple:
   | LBRACE record_field_updates_opt RBRACE { $2 }
-  ;
 
 record_field_updates_opt:
   | record_field_updates { $1 }
   | (* empty *) { [] }
-  ;
 
 record_field_updates:
   | record_field_update { [$1] }
   | record_field_updates COMMA record_field_update { $1 @ [$3] }
-  ;
 
 record_field_update:
-  | record_field_name MATCH expr { Syntax.Assoc ($1, $3) }
-  ;
+  | record_field_name MATCH exp { Ast.Assoc ($1, $3) }
 
-app_expr:
-  | primary_expr LPAREN exprs_opt RPAREN
-    { Syntax.FuncCallExpr { Syntax.func_call_mod = None;
-      Syntax.func_call_func = $1; Syntax.func_call_args = $3; } }
-  | primary_expr COLON primary_expr LPAREN exprs_opt RPAREN
-    { Syntax.FuncCallExpr { Syntax.func_call_mod = Some $1;
-      Syntax.func_call_func = $3; Syntax.func_call_args = $5; } }
-  | primary_expr { $1 }
-  ;
+app_exp:
+  | primary_exp LPAREN exps_opt RPAREN
+    { Ast.funallexp { Ast.fun_call_mod = None;
+      Ast.fun_call_fun = $1; Ast.fun_call_args = $3; } }
+  | primary_exp COLON primary_exp LPAREN exps_opt RPAREN
+    { Ast.funallexp { Ast.fun_call_mod = Some $1;
+      Ast.fun_call_fun = $3; Ast.fun_call_args = $5; } }
+  | primary_exp { $1 }
 
 (* TODO *)
-primary_expr:
+primary_exp:
   | var { $1 }
   | atomic { $1 }
-  (*| tuple_skel { $1 }*)
+  | tuple_skel { $1 }
   | list_skel { $1 }
-  | list_comprehension { $1 }
-  | block_expr { $1 }
-  | if_expr { $1 }
-  | case_expr { $1 }
-  | receive_expr { $1 }
-  | func_expr { $1 }
-  | query_expr { $1 }
-  | LPAREN expr RPAREN { Syntax.ParenExpr $2 }
-  ;
+  | list_compr { $1 }
+  | block_exp { $1 }
+  | if_exp { $1 }
+  | case_exp { $1 }
+  | receive_exp { $1 }
+  | fun_exp { $1 }
+  | query_exp { $1 }
+  | LPAREN exp RPAREN { Ast.Parenexp $2 }
 
 var:
-  | UIDENT { Syntax.Var($1) }
-  ;
+  | UIDENT { Ast.Var($1) }
 
 atomic:
   | atom { $1 }
   | char { $1 }
-  | string { Syntax.String [$1] }
+  | string { Ast.String [$1] }
   | integer { $1 }
   | float { $1 }
-  ;
 
 atom:
-  | LIDENT { Syntax.Atom($1) }
-  ;
+  | LIDENT { Ast.Atom($1) }
 
 char:
-  | CHAR { Syntax.Char($1) }
-  ;
+  | CHAR { Ast.Char($1) }
 
 string:
-  | STRING { Syntax.String $1 }
-  ;
+  | STRING { Ast.String $1 }
 
 integer:
-  | INT { Syntax.Int($1) }
-  ;
+  | INT { Ast.Int($1) }
 
 float:
-  | FLOAT { Syntax.Float($1) }
-  ;
+  | FLOAT { Ast.Float($1) }
 
 tuple_skel:
-  | LBRACE exprs_opt RBRACE { Syntax.Tuple $2 }
-  ;
-  
-list_skel:
-  | LBRACK RBRACK { Syntax.List [] }
-  | LBRACK exprs list_skel_tail_opt RBRACK { Syntax.List ($2, $3) }
-  ;
-  
-list_skel_tail_opt:
-  | BAR expr { Some $2 }
-  | (* empty *) { None }
-  ;
+  | LBRACE exps_opt RBRACE { Ast.Tuple $2 }
 
-list_comprehension:
-  | LBRACK expr DBAR list_comprehension_exprs RBRACK
-    { Syntax.ListComp ($2, $4) }
-  ;
-  
-list_comprehension_exprs:
-  | list_comprehension_expr { [$1] }
-  | list_comprehension_exprs COMMA list_comprehension_expr { $1 @ [$3] }
-  ;
-  
-list_comprehension_expr:
-  | generator { $1 }
-  | filter { $1 }
-  ;
-  
-generator:
-  | pattern LARROW expr { Syntax.Generator ($1, $3) }
-  
-filter:
-  | expr { $1 }
-  ;
-  
-block_expr:
-  | BEGIN body END { Syntax.BlockExpr $2 }
-  ;
-  
-if_expr:
-  | IF if_clauses END { Syntax.IfExpr $2 }
-  ;
-  
+list_skel:
+  | LBRACK RBRACK { Ast.List [] }
+  | LBRACK exps list_skel_tail_opt RBRACK { Ast.List ($2, $3) }
+
+list_skel_tail_opt:
+  | BAR exp { Some $2 }
+  | (* empty *) { None }
+
+list_compr:
+  | LBRACK exp DBAR list_compr_quals RBRACK
+  { Ast.List_compr ($2, $4) }
+
+list_compr_quals:
+  | list_compr_qual { [$1] }
+  | list_compr_quals COMMA list_compr_qual { $1 @ [$3] }
+
+list_compr_qual:
+  | list_compr_generator { $1 }
+  | list_compr_filter { $1 }
+
+list_compr_generator:
+  | pattern LARROW exp
+  { Ast.List_compr_gen {
+      gen_ptn = $1;
+      gen_arrow = $2;
+      gen_exp = $3 }
+  }
+
+list_compr_filter:
+  | exp { $1 }
+
+block_exp:
+  | BEGIN body END { Ast.Blockexp $2 }
+
+if_exp:
+  | IF if_clauses END { Ast.Ifexp $2 }
+
 if_clauses:
   | if_clause { [$1] }
   | if_clauses SEMI if_clause { $1 @ [$3] }
-  ;
-  
+
 if_clause:
   | guard clause_body { ($1, $2) }
-  ;
-  
-case_expr:
-  | CASE expr OF cr_clauses END { Syntax.CaseExpr ($2, $4) }
-  ;
-  
-cr_clauses:
-  | cr_clause { [$1] }
-  | cr_clauses SEMI cr_clause { $1 @ [$3] }
-  ;
-  
-cr_clause:
-  | pattern clause_guard_opt clause_body
-    { { Syntax.cr_clause_pattern = $1;
-        Syntax.cr_clause_gaurd = $2;
-        Syntax.cr_clause_body = $3; } }
-  ;
-  
-receive_expr:
-  | RECEIVE cr_clauses END { Syntax.ReceiveExpr ($2, None) }
-  | RECEIVE cr_clauses_opt AFTER expr clause_body END
-    { Syntax.ReceiveExpr ($2, Some ($4, $5)) }
-  ;
-  
-cr_clauses_opt:
-  | cr_clauses { $1 }
-  | (* empty *) { [] }
-  ;
-  
-func_expr:
-  | FUN func_arity { Syntax.FuncExpr $2 }
-  | FUN func_clauses END { Syntax.FuncExpr $2 }
-  ;
-  
-func_arity:
-  | primary_expr COLON primary_expr DIV INT
-    { Syntax.FuncArity (Some $1, $3, $5) }
-  | primary_expr DIV INT { Syntax.FuncArity (None, $1, $3) }
-  ;
 
-query_expr:
-  | QUERY list_comprehension END { Syntax.QueryExpr $2 }
-  ;
-  
+clause_body:
+  | RARROW body { $2 }
+
+case_exp:
+  | CASE exp OF case_clauses END { Ast.Caseexp ($2, $4) }
+
+case_clauses:
+  | case_clause { [$1] }
+  | case_clauses SEMI case_clause { $1 @ [$3] }
+
+case_clause:
+  | pattern guard_clause_opt clause_body
+    { { Ast.case_clause_pattern = $1;
+        Ast.case_clause_gaurd = $2;
+        Ast.case_clause_body = $3; } }
+
+receive_exp:
+  | RECEIVE case_clauses END { Ast.Receiveexp ($2, None) }
+  | RECEIVE case_clauses_opt AFTER exp clause_body END
+    { Ast.Receiveexp ($2, Some ($4, $5)) }
+
+case_clauses_opt:
+  | case_clauses { $1 }
+  | (* empty *) { [] }
+
+fun_exp:
+  | FUN fun_arity { Ast.Fun $2 }
+  | FUN fun_clauses END { Ast.Fun $2 }
+
+fun_arity:
+  | primary_exp COLON primary_exp DIV INT
+    { Ast.funArity (Some $1, $3, $5) }
+  | primary_exp DIV INT { Ast.funArity (None, $1, $3) }
+
+query_exp:
+  | QUERY list_compr END { Ast.Queryexp $2 }

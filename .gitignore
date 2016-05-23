@@ -30,6 +30,8 @@ setup.log
 *parser.mli
 *lexer.ml
 *lexer.mli
+*.automaton
+*.conflicts
 
 # generated programs
 eryngii

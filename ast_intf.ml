@@ -46,7 +46,7 @@ and desc =
   | Block of body enclosed
   | If of (t * t) list (* guard, clause body *)
   | Case of case
-  | Receive of case_clause list * (t * t) option
+  | Recv of recv
   | Anon_fun of anon_fun
   | Module_fun of module_fun
   | Query of t
@@ -74,8 +74,8 @@ and desc =
   | Bits_compr of compr (* bitstring comprehension *)
 
 and module_ = {
-  module_attrs : t list;
-  module_decls : t list;
+  module_attrs : (t * token) list;
+  module_decls : (t * token) list;
 }
 
 and module_attr = {
@@ -101,6 +101,7 @@ and fun_clause = {
 
 and case = {
   case_begin : token;
+  case_exp : t;
   case_of : token;
   case_clauses : (case_clause, token) Seplist.t;
   case_end : token;
@@ -115,6 +116,20 @@ and case_clause = {
   case_clause_body : body;
 }
 
+and recv = {
+  recv_begin : token;
+  recv_clauses : (case_clause, token) Seplist.t;
+  recv_after : recv_after option;
+  recv_end : token;
+}
+
+and recv_after = {
+  after_begin : token;
+  after_timer : t;
+  after_arrow : token;
+  after_body : body;
+}
+
 and anon_fun = {
   anon_fun_begin : token;
   anon_fun_body : fun_body;
@@ -123,9 +138,9 @@ and anon_fun = {
 
 and module_fun = {
   module_fun_prefix : token;
-  module_fun_mname : text option;
-  module_fun_colon : token;
-  module_fun_fname : text;
+  module_fun_mname : t option;
+  module_fun_colon : token option;
+  module_fun_fname : t;
   module_fun_slash : token;
   module_fun_arity : text;
 }

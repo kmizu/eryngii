@@ -1,3 +1,10 @@
+%{
+
+let locate loc x = Located.create (Some loc) x
+let nonloc x = Located.create None x
+
+%}
+
 %token <Ast.token> UIDENT
 %token <Ast.token> LIDENT
 %token <Ast.token> CHAR
@@ -58,7 +65,6 @@
 %token <Ast.token> OF               (* "of" *)
 %token <Ast.token> CASE             (* "case" *)
 %token <Ast.token> FUN              (* "fun" *)
-%token <Ast.token> QUERY            (* "query" *)
 %token <Ast.token> CATCH            (* "catch" *)
 %token <Ast.token> IF               (* "if" *)
 %token <Ast.token> RECEIVE          (* "receive" *)
@@ -73,32 +79,43 @@ module_:
   | module_decls { Some $1 }
 
 module_decls:
-  | module_attrs fun_decls EOF
-  { Ast.Module {
+  | module_attr+ EOF
+  { nonloc @@ Ast.Module {
+      module_attrs = $1;
+      module_decls = []; }
+  }
+  | module_attr+ fun_decl+ EOF
+  { nonloc @@ Ast.Module {
       module_attrs = $1;
       module_decls = $2; }
   }
-
-
-module_attrs:
-  | module_attr* { $1 }
+  | fun_decl+ EOF
+  { nonloc @@ Ast.Module {
+      module_attrs = [];
+      module_decls = $1; }
+  }
 
 module_attr:
-  | MINUS LIDENT LPAREN exp RPAREN DOT { $1 }
-
-fun_decls:
-  | fun_decl* { $1 }
+  | MINUS LIDENT LPAREN exp RPAREN DOT
+  { (nonloc @@ Ast.Module_attr {
+      module_attr_minus = $1;
+      module_attr_tag = $2;
+      module_attr_open = $3;
+      module_attr_value = $4;
+      module_attr_close = $5; }, $6)
+  }
 
 fun_decl:
-  | fun_clauses DOT { Ast.funDecl $1 }
+  | fun_clauses DOT
+  { (nonloc @@ Ast.Fun_decl $1, $2) }
 
 fun_clauses:
-  | fun_clause { [$1] }
-  | fun_clauses SEMI fun_clause { $1 @ [$3] }
+  | fun_clause { Seplist.one $1 }
+  | fun_clauses SEMI fun_clause { Seplist.cons $1 ~sep:$2 $3 }
 
 fun_clause:
   | LIDENT fun_clause_def
-    { { $2 with Ast.fun_clause_name = Some $1 } }
+  { { $2 with Ast.fun_clause_name = Some $1 } }
 
 fun_clause_def:
   | LPAREN patterns_opt RPAREN guard_clause_opt clause_body
@@ -361,7 +378,6 @@ primary_exp:
   | case_exp { $1 }
   | receive_exp { $1 }
   | fun_exp { $1 }
-  | query_exp { $1 }
   | LPAREN exp RPAREN { Ast.Parenexp $2 }
 
 var:
@@ -402,7 +418,13 @@ list_skel_tail_opt:
 
 list_compr:
   | LBRACK exp DBAR list_compr_quals RBRACK
-  { Ast.List_compr ($2, $4) }
+  { Ast.List_compr {
+      compr_open = $1;
+      compr_exp = $2;
+      compr_sep = $3;
+      compr_quals = $4;
+      compr_close = $5; }
+  }
 
 list_compr_quals:
   | list_compr_qual { [$1] }
@@ -437,10 +459,17 @@ if_clause:
   | guard clause_body { ($1, $2) }
 
 clause_body:
-  | RARROW body { $2 }
+  | RARROW body { ($1, $2) }
 
 case_exp:
-  | CASE exp OF case_clauses END { Ast.Caseexp ($2, $4) }
+  | CASE exp OF case_clauses END
+  { Ast.Case {
+      case_begin = $1;
+      case_exp = $2;
+      case_of = $3;
+      case_clauses = $4;
+      case_end = $5; }
+  }
 
 case_clauses:
   | case_clause { [$1] }
@@ -448,27 +477,56 @@ case_clauses:
 
 case_clause:
   | pattern guard_clause_opt clause_body
-    { { Ast.case_clause_pattern = $1;
+  { { Ast.case_clause_pattern = $1;
         Ast.case_clause_gaurd = $2;
         Ast.case_clause_body = $3; } }
 
 receive_exp:
-  | RECEIVE case_clauses END { Ast.Receiveexp ($2, None) }
+  | RECEIVE case_clauses END
+  { Ast.Recv {
+      recv_begin = $1;
+      recv_clauses = $2;
+      recv_after = None;
+      recv_end = $3; }
+  }
   | RECEIVE case_clauses_opt AFTER exp clause_body END
-    { Ast.Receiveexp ($2, Some ($4, $5)) }
+  { Ast.Recv {
+      recv_begin = $1;
+      recv_clauses = $2;
+      recv_after = Some {
+        after_begin = $3;
+        after_timer = $4;
+        after_arrow = fst $4;
+        after_body = snd $5; };
+      recv_end = $6; }
+  }
 
 case_clauses_opt:
   | case_clauses { $1 }
   | (* empty *) { [] }
 
 fun_exp:
-  | FUN fun_arity { Ast.Fun $2 }
-  | FUN fun_clauses END { Ast.Fun $2 }
-
-fun_arity:
-  | primary_exp COLON primary_exp DIV INT
-    { Ast.funArity (Some $1, $3, $5) }
-  | primary_exp DIV INT { Ast.funArity (None, $1, $3) }
-
-query_exp:
-  | QUERY list_compr END { Ast.Queryexp $2 }
+  | FUN primary_exp COLON primary_exp DIV INT
+  { Ast.Module_fun {
+      module_fun_prefix = $1;
+      module_fun_mname = Some $2;
+      module_fun_colon = Some $3;
+      module_fun_fname = $4;
+      module_fun_slash = $5;
+      module_fun_arity = $6; }
+  }
+  | FUN primary_exp DIV INT
+  { Ast.Module_fun {
+      module_fun_prefix = $1;
+      module_fun_mname = Some $2;
+      module_fun_colon = None;
+      module_fun_fname = None;
+      module_fun_slash = $3;
+      module_fun_arity = $4; }
+  }
+  | FUN fun_clauses END
+  { Ast.Anon_fun {
+      anon_fun_begin = $1;
+      anon_fun_body = $2;
+      anon_fun_end = $3; }
+  }

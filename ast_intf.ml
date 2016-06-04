@@ -42,9 +42,9 @@ and desc =
   | Module of module_
   | Module_attr of module_attr
   | Fun_decl of fun_body
-  | Catch of (token * t)
-  | Block of body enclosed
-  | If of (t * t) list (* guard, clause body *)
+  | Catch of token * t
+  | Block of explist enclosed
+  | If of if_
   | Case of case
   | Recv of recv
   | Anon_fun of anon_fun
@@ -63,8 +63,8 @@ and desc =
   | String of text
   | Int of text
   | Float of text
-  | List_ptn of list_ptn
-  | Tuple of body enclosed
+  | List of erl_list
+  | Tuple of explist option enclosed
   | Record of record
   | Field of field
   | Update_record of t * record
@@ -74,9 +74,11 @@ and desc =
   | Bits_compr of compr (* bitstring comprehension *)
 
 and module_ = {
-  module_attrs : (t * token) list;
-  module_decls : (t * token) list;
+  module_attrs : stat list;
+  module_decls : stat list;
 }
+
+and stat = t * token
 
 and module_attr = {
   module_attr_minus : token;
@@ -91,12 +93,24 @@ and fun_body = (fun_clause, token) Seplist.t
 and fun_clause = {
   fun_clause_name : text option;
   fun_clause_open : token;
-  fun_clause_ptns : body;
+  fun_clause_ptns : explist;
   fun_clause_close : token;
   fun_clause_when : token option;
-  fun_clause_guard : body;
+  fun_clause_guard : explist option;
   fun_clause_arrow : token;
-  fun_clause_body : body;
+  fun_clause_body : explist;
+}
+
+and if_ = {
+  if_begin : token;
+  if_clauses : (if_clause, token) Seplist.t;
+  if_end : token;
+}
+
+and if_clause = {
+  if_clause_guard : explist;
+  if_clause_arrow : token;
+  if_clause_body : explist;
 }
 
 and case = {
@@ -111,9 +125,9 @@ and case_clause = {
   case_clause_ptn : t;
   case_clause_close : token;
   case_clause_when : token option;
-  case_clause_guard : body;
+  case_clause_guard : explist option;
   case_clause_arrow : token;
-  case_clause_body : body;
+  case_clause_body : explist;
 }
 
 and recv = {
@@ -127,7 +141,7 @@ and recv_after = {
   after_begin : token;
   after_timer : t;
   after_arrow : token;
-  after_body : body;
+  after_body : explist;
 }
 
 and anon_fun = {
@@ -154,29 +168,29 @@ and fun_name = {
 and call = {
   call_fname : fun_name;
   call_open : token;
-  call_args : body;
+  call_args : explist;
   call_close : token;
 }
 
 and binexp = {
-  binexp_op : token;
+  binexp_op : op;
   binexp_left : t;
   binexp_right : t;
 }
 
-and list_ptn = {
-  list_ptn_open : token;
-  list_ptn_head : t list;
-  list_ptn_bar : token;
-  list_ptn_tail : t option;
-  list_ptn_close : token;
+and erl_list = {
+  list_open : token;
+  list_head : explist;
+  list_bar : token option;
+  list_tail : t option;
+  list_close : token;
 }
 
 and compr = {
   compr_open : token;
   compr_exp : t;
   compr_sep : token;
-  compr_quals : body;
+  compr_quals : explist;
   compr_close : token;
 }
 
@@ -229,6 +243,12 @@ and 'a enclosed = {
   enc_close : token;
 }
 
-and body = (t, token) Seplist.t
+and explist = (t, token) Seplist.t
 
 and token = Location.t
+
+let enclose open_ desc close = {
+  enc_open = open_;
+  enc_desc = desc;
+  enc_close = close;
+}

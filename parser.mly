@@ -3,14 +3,20 @@
 let locate loc x = Located.create (Some loc) x
 let nonloc x = Located.create None x
 
+let create_binexp left op right =
+  Ast.(Binexp {
+      binexp_left = left;
+      binexp_op = op;
+      binexp_right = right })
+
 %}
 
-%token <Ast.token> UIDENT
-%token <Ast.token> LIDENT
-%token <Ast.token> CHAR
-%token <Ast.token> STRING
-%token <Ast.token> INT
-%token <Ast.token> FLOAT
+%token <Ast.text> UIDENT
+%token <Ast.text> LIDENT
+%token <Ast.text> CHAR
+%token <Ast.text> STRING
+%token <Ast.text> INT
+%token <Ast.text> FLOAT
 %token <Ast.token> LPAREN
 %token <Ast.token> RPAREN
 %token <Ast.token> LBRACK
@@ -111,25 +117,36 @@ fun_decl:
 
 fun_clauses:
   | fun_clause { Seplist.one $1 }
-  | fun_clauses SEMI fun_clause { Seplist.cons $1 ~sep:$2 $3 }
+  | fun_clauses SEMI fun_clause { Seplist.cons $3 ~sep:$2 $1 }
 
 fun_clause:
   | LIDENT fun_clause_def
   { { $2 with Ast.fun_clause_name = Some $1 } }
 
 fun_clause_def:
-  | LPAREN patterns_opt RPAREN guard_clause_opt clause_body
-    { { Ast.fun_clause_name = None;
-        Ast.fun_clause_patterns = $2;
-        Ast.fun_guard_clause = $4;
-        Ast.fun_clause_body = $5; } }
+  | LPAREN patterns_opt RPAREN RARROW body
+  { Ast.({
+      fun_clause_name = None;
+      fun_clause_open = $1;
+      fun_clause_ptns = $2;
+      fun_clause_close = $3;
+      fun_clause_when = None;
+      fun_clause_guard = None;
+      fun_clause_arrow = $4;
+      fun_clause_body = $5 })
+  }
+  | LPAREN patterns_opt RPAREN WHEN guard RARROW body
+  { Ast.({
+      fun_clause_name = None;
+      fun_clause_open = $1;
+      fun_clause_ptns = $2;
+      fun_clause_close = $3;
+      fun_clause_when = Some $4;
+      fun_clause_guard = Some $5;
+      fun_clause_arrow = $6;
+      fun_clause_body = $7 })
+  }
 
-guard_clause_opt:
-  | guard_clause { $1 }
-  | (* empty *) { [] }
-
-guard_clause:
-  | WHEN guard { $2 }
 
 guard:
   | guard_test { [$1] }
@@ -145,17 +162,17 @@ guard_recognizer:
   | LIDENT LPAREN guard_exp RPAREN { Ast.Guardfunallexp ($1, $3) }
 
 guard_term_comparison:
-  | guard_exp compare_op guard_exp { Ast.GuardBinexp ($1, $2, $3) }
+  | guard_exp compare_op guard_exp { Ast.Guardcreate_binexp ($1, $2, $3) }
 
 guard_exp:
   | guard_shift_exp { $1 }
 
 guard_shift_exp:
-  | guard_shift_exp shift_op guard_mul_exp { Ast.GuardBinexp ($1, $2, $3) }
+  | guard_shift_exp shift_op guard_mul_exp { Ast.Guardcreate_binexp ($1, $2, $3) }
   | guard_mul_exp { $1 }
 
 guard_mul_exp:
-  | guard_mul_exp mul_op guard_prefix_exp { Ast.GuardBinexp ($1, $2, $3) }
+  | guard_mul_exp mul_op guard_prefix_exp { Ast.Guardcreate_binexp ($1, $2, $3) }
 
 guard_prefix_exp:
   | prefix_op guard_app_exp { Ast.GuardUnaryexp ($2, $1) }
@@ -202,22 +219,26 @@ guard_tuple_skel:
   | LBRACE guard_exps_opt RBRACE { Ast.GuardTuple $2 }
 
 body:
-  | exps { Ast.Body $1 }
+  | exps { $1 }
 
 exps:
-  | exp { [$1] }
-  | exps COMMA exp { $1 @ [$3] }
+  | rev_exps { Seplist.rev $1 }
+
+rev_exps:
+  | exp { Seplist.one $1 }
+  | rev_exps COMMA exp { Seplist.cons $3 ~sep:$2 $1 }
 
 exps_opt:
   | exps { $1 }
-  | (* empty *) { [] }
+  | (* empty *) { Seplist.empty }
 
 exp:
-  | CATCH exp { Ast.Catchexp $2 }
+  | CATCH exp { nonloc @@ Ast.Catch ($1, $2) }
   | match_exp { $1 }
 
 match_exp:
-  | pattern MATCH match_exp { Ast.Binexp($1, Ast.OpMatch, $3) }
+  | pattern MATCH match_exp
+  { nonloc @@ create_binexp $1 (locate $2 Ast.Op_match) $3 }
   | send_exp { $1 }
 
 pattern:
@@ -229,7 +250,7 @@ pattern:
   (*| list_pattern { $1 }*)
 
 universal_pattern:
-  | USCORE { Ast.Universal }
+  | USCORE { locate $1.loc Ast.Uscore }
 
 tuple_pattern:
   | LBRACE patterns_opt RBRACE { Ast.Tuple $2 }
@@ -243,8 +264,12 @@ list_pattern_tail_opt:
   | (* empty *) { None }
 
 patterns:
-  | pattern { [$1] }
-  | patterns COMMA pattern { $1 @ [$3] }
+  | rev_patterns { Seplist.rev $1 }
+
+rev_patterns:
+  | pattern { Seplist.one $1 }
+  | patterns COMMA pattern
+  { Seplist.cons $3 ~sep:$2 $1 }
 
 patterns_opt:
   | patterns { $1 }
@@ -271,25 +296,28 @@ record_field_name:
   | atom { $1 }
 
 send_exp:
-  | compare_exp SEND send_exp { Ast.Binexp($1, Ast.OpSend, $3) }
+  | compare_exp SEND send_exp
+  { nonloc @@ create_binexp $1 (locate $2 Ast.Op_send) $3 }
   | compare_exp { $1 }
 
 compare_exp:
-  | list_conc_exp compare_op list_conc_exp { Ast.Binexp($1, $2, $3) }
+  | list_conc_exp compare_op list_conc_exp
+  { nonloc @@ create_binexp $1 $2 $3 }
   | list_conc_exp { $1 }
 
 compare_op:
-  | EQ { Ast.OpEq }
-  | NE { Ast.OpNe }
-  | XEQ { Ast.OpXEq }
-  | XNE { Ast.OpXNe }
-  | GT { Ast.OpGt }
-  | GE { Ast.OpGe }
-  | LT { Ast.OpLt }
-  | LE { Ast.OpLe }
+  | EQ { locate $1 Ast.OpEq }
+  | NE { locate $1 Ast.OpNe }
+  | XEQ { locate $1 Ast.OpXEq }
+  | XNE { locate $1 Ast.OpXNe }
+  | GT { locate $1 Ast.OpGt }
+  | GE { locate $1 Ast.OpGe }
+  | LT { locate $1 Ast.OpLt }
+  | LE { locate $1 Ast.OpLe }
 
 list_conc_exp:
-  | shift_exp list_conc_op list_conc_exp { Ast.Binexp($1, $2, $3) }
+  | shift_exp list_conc_op list_conc_exp
+  { create_binexp $1 $2 $3 }
   | shift_exp { $1 }
 
 list_conc_op:
@@ -297,7 +325,7 @@ list_conc_op:
   | LIST_DIFF { Ast.OpListDiff }
 
 shift_exp:
-  | shift_exp shift_op mul_exp { Ast.Binexp($1, $2, $3) }
+  | shift_exp shift_op mul_exp { Ast.create_binexp($1, $2, $3) }
   | mul_exp { $1 }
 
 shift_op:
@@ -309,8 +337,9 @@ shift_op:
   | RSHIFT { Ast.Op_rshift }
 
 mul_exp:
-  | mul_exp mul_op prefix_exp { Ast.Binexp($1, $2, $3) }
-  | mul_exp AND prefix_exp { Ast.Binexp($1, Ast.OpAnd, $3) }
+  | mul_exp mul_op prefix_exp { create_binexp $1 $2 $3 }
+  | mul_exp AND prefix_exp
+  { create_binexp $1 (create_op $2 Ast.OpAnd) $3 }
   | prefix_exp { $1 }
 
 mul_op:
@@ -373,52 +402,73 @@ primary_exp:
   | tuple_skel { $1 }
   | list_skel { $1 }
   | list_compr { $1 }
-  | block_exp { $1 }
+  (*
   | if_exp { $1 }
   | case_exp { $1 }
   | receive_exp { $1 }
   | fun_exp { $1 }
-  | LPAREN exp RPAREN { Ast.Parenexp $2 }
+*)
+  | LPAREN exp RPAREN
+  { nonloc Ast.(Paren (enclose $1 $2 $3)) }
 
 var:
-  | UIDENT { Ast.Var($1) }
+  | UIDENT { locate $1.loc (Ast.Var $1) }
 
 atomic:
   | atom { $1 }
   | char { $1 }
-  | string { Ast.String [$1] }
+  | string { locate $1.loc (Ast.String $1) }
   | integer { $1 }
   | float { $1 }
 
 atom:
-  | LIDENT { Ast.Atom($1) }
+  | LIDENT { locate $1.loc (Ast.Atom $1) }
 
 char:
-  | CHAR { Ast.Char($1) }
+  | CHAR { locate $1.loc (Ast.Char $1) }
 
 string:
-  | STRING { Ast.String $1 }
+  | STRING { locate $1.loc (Ast.String $1) }
 
 integer:
-  | INT { Ast.Int($1) }
+  | INT { locate $1.loc (Ast.Int $1) }
 
 float:
-  | FLOAT { Ast.Float($1) }
+  | FLOAT { locate $1.loc (Ast.Float $1) }
 
 tuple_skel:
-  | LBRACE exps_opt RBRACE { Ast.Tuple $2 }
+  | LBRACE exps_opt RBRACE
+  { nonloc Ast.(Tuple (enclose $1 $2 $3)) }
 
 list_skel:
-  | LBRACK RBRACK { Ast.List [] }
-  | LBRACK exps list_skel_tail_opt RBRACK { Ast.List ($2, $3) }
-
-list_skel_tail_opt:
-  | BAR exp { Some $2 }
-  | (* empty *) { None }
+  | LBRACK RBRACK
+  { nonloc Ast.(List {
+      list_open = $1;
+      list_head = [];
+      list_bar = None;
+      list_tail = None;
+      list_close = $2 })
+  }
+  | LBRACK exps RBRACK
+  { nonloc Ast.(List {
+      list_open = $1;
+      list_head = $2;
+      list_bar = None;
+      list_tail = None;
+      list_close = $3 })
+  }
+  | LBRACK exps BAR exp RBRACK
+  { nonloc Ast.(List {
+      list_open = $1;
+      list_head = $2;
+      list_bar = Some $3;
+      list_tail = Some $4;
+      list_close = $5 })
+  }
 
 list_compr:
   | LBRACK exp DBAR list_compr_quals RBRACK
-  { Ast.List_compr {
+  { nonloc @@ Ast.List_compr {
       compr_open = $1;
       compr_exp = $2;
       compr_sep = $3;
@@ -427,16 +477,20 @@ list_compr:
   }
 
 list_compr_quals:
-  | list_compr_qual { [$1] }
-  | list_compr_quals COMMA list_compr_qual { $1 @ [$3] }
+  | rev_list_compr_quals { Seplist.rev $1 }
+
+rev_list_compr_quals:
+  | list_compr_qual { Seplist.one $1 }
+  | rev_list_compr_quals COMMA list_compr_qual
+  { Seplist.cons $3 ~sep:$2 $1 }
 
 list_compr_qual:
-  | list_compr_generator { $1 }
+  | list_compr_gen { $1 }
   | list_compr_filter { $1 }
 
-list_compr_generator:
+list_compr_gen:
   | pattern LARROW exp
-  { Ast.List_compr_gen {
+  { nonloc @@ Ast.List_compr_gen {
       gen_ptn = $1;
       gen_arrow = $2;
       gen_exp = $3 }
@@ -446,68 +500,85 @@ list_compr_filter:
   | exp { $1 }
 
 block_exp:
-  | BEGIN body END { Ast.Blockexp $2 }
+  | BEGIN body END
+  { nonloc @@ Ast.(Block (enclose $2 $2 $3)) }
 
 if_exp:
-  | IF if_clauses END { Ast.Ifexp $2 }
+  | IF if_clauses END
+  { nonloc (Ast.If {
+      if_begin = $1;
+      if_clauses = $2;
+      if_end = $3 })
+  }
 
 if_clauses:
   | if_clause { [$1] }
   | if_clauses SEMI if_clause { $1 @ [$3] }
 
 if_clause:
-  | guard clause_body { ($1, $2) }
-
-clause_body:
-  | RARROW body { ($1, $2) }
+  | guard RARROW body { ($1, $2) }
 
 case_exp:
   | CASE exp OF case_clauses END
-  { Ast.Case {
+  { nonloc (Ast.Case {
       case_begin = $1;
       case_exp = $2;
       case_of = $3;
       case_clauses = $4;
-      case_end = $5; }
+      case_end = $5; })
   }
 
 case_clauses:
-  | case_clause { [$1] }
-  | case_clauses SEMI case_clause { $1 @ [$3] }
+  | rev_case_clauses { Seplist.rev $1 }
+
+rev_case_clauses:
+  | case_clause { Seplist.one $1 }
+  | rev_case_clauses SEMI case_clause
+  { Seplist.cons $3 ~sep:$2 $1 }
 
 case_clause:
-  | pattern guard_clause_opt clause_body
-  { { Ast.case_clause_pattern = $1;
-        Ast.case_clause_gaurd = $2;
+  | pattern RARROW body
+  | pattern WHEN guard RARROW body
+  { { Ast.case_clause_ptn = $1;
+        Ast.case_clause_guard = $2;
         Ast.case_clause_body = $3; } }
 
 receive_exp:
   | RECEIVE case_clauses END
-  { Ast.Recv {
+  { nonloc @@ Ast.Recv {
       recv_begin = $1;
       recv_clauses = $2;
       recv_after = None;
       recv_end = $3; }
   }
-  | RECEIVE case_clauses_opt AFTER exp clause_body END
-  { Ast.Recv {
+  | RECEIVE AFTER exp RARROW body END
+  { nonloc @@ Ast.Recv {
+      recv_begin = $1;
+      recv_clauses = Seplist.empty;
+      recv_after = Some {
+        after_begin = $2;
+        after_timer = $3;
+        after_arrow = $4;
+        after_body = $5;
+      };
+      recv_end = $6; }
+  }
+  | RECEIVE case_clauses AFTER exp RARROW body END
+  { nonloc @@ Ast.Recv {
       recv_begin = $1;
       recv_clauses = $2;
       recv_after = Some {
         after_begin = $3;
         after_timer = $4;
-        after_arrow = fst $4;
-        after_body = snd $5; };
-      recv_end = $6; }
+        after_arrow = $5;
+        after_body = $6;
+      };
+      recv_end = $7; }
   }
-
-case_clauses_opt:
-  | case_clauses { $1 }
-  | (* empty *) { [] }
 
 fun_exp:
   | FUN primary_exp COLON primary_exp DIV INT
-  { Ast.Module_fun {
+  { nonloc @@ Ast.Module_fun {
       module_fun_prefix = $1;
       module_fun_mname = Some $2;
       module_fun_colon = Some $3;
@@ -516,7 +587,7 @@ fun_exp:
       module_fun_arity = $6; }
   }
   | FUN primary_exp DIV INT
-  { Ast.Module_fun {
+  { nonloc @@ Ast.Module_fun {
       module_fun_prefix = $1;
       module_fun_mname = Some $2;
       module_fun_colon = None;
@@ -525,7 +596,7 @@ fun_exp:
       module_fun_arity = $4; }
   }
   | FUN fun_clauses END
-  { Ast.Anon_fun {
+  { nonloc @@ Ast.Anon_fun {
       anon_fun_begin = $1;
       anon_fun_body = $2;
       anon_fun_end = $3; }

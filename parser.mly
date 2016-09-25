@@ -74,6 +74,7 @@ let create_binexp left op right =
 %token <Ast.token> CATCH            (* "catch" *)
 %token <Ast.token> IF               (* "if" *)
 %token <Ast.token> RECEIVE          (* "receive" *)
+%token <Ast.token> TRY              (* "try" *)
 %token EOF
 
 %start <Ast.t option> module_
@@ -207,9 +208,9 @@ guard_primary_exp:
   | LPAREN guard_exp RPAREN { Ast.GuardParenexp $2 }
 
 guard_list_skel:
-  | LBRACK RBRACK { Ast.GuardList [] }
+  | LBRACK RBRACK { Ast.Guard_list [] }
   | LBRACK guard_exps guard_list_skel_tail_opt RBRACK
-    { Ast.GuardList ($2, $3) }
+    { Ast.Guard_list ($2, $3) }
 
 guard_list_skel_tail_opt:
   | BAR guard_exp { Some $2 }
@@ -306,23 +307,23 @@ compare_exp:
   | list_conc_exp { $1 }
 
 compare_op:
-  | EQ { locate $1 Ast.OpEq }
-  | NE { locate $1 Ast.OpNe }
-  | XEQ { locate $1 Ast.OpXEq }
-  | XNE { locate $1 Ast.OpXNe }
-  | GT { locate $1 Ast.OpGt }
-  | GE { locate $1 Ast.OpGe }
-  | LT { locate $1 Ast.OpLt }
-  | LE { locate $1 Ast.OpLe }
+  | EQ { locate $1 Ast.Op_eq }
+  | NE { locate $1 Ast.Op_ne }
+  | XEQ { locate $1 Ast.Op_xeq }
+  | XNE { locate $1 Ast.Op_xne }
+  | GT { locate $1 Ast.Op_gt }
+  | GE { locate $1 Ast.Op_ge }
+  | LT { locate $1 Ast.Op_lt }
+  | LE { locate $1 Ast.Op_le }
 
 list_conc_exp:
   | shift_exp list_conc_op list_conc_exp
-  { create_binexp $1 $2 $3 }
+  { nonloc @@ create_binexp $1 $2 $3 }
   | shift_exp { $1 }
 
 list_conc_op:
-  | LIST_ADD { Ast.OpListAdd }
-  | LIST_DIFF { Ast.OpListDiff }
+  | LIST_ADD { locate $1 @@ Ast.Op_list_add }
+  | LIST_DIFF { locate $1 @@ Ast.Op_list_diff }
 
 shift_exp:
   | shift_exp shift_op mul_exp { Ast.create_binexp($1, $2, $3) }
@@ -402,12 +403,11 @@ primary_exp:
   | tuple_skel { $1 }
   | list_skel { $1 }
   | list_compr { $1 }
-  (*
   | if_exp { $1 }
   | case_exp { $1 }
   | receive_exp { $1 }
   | fun_exp { $1 }
-*)
+  | try_exp { $1 }
   | LPAREN exp RPAREN
   { nonloc Ast.(Paren (enclose $1 $2 $3)) }
 
@@ -512,14 +512,22 @@ if_exp:
   }
 
 if_clauses:
-  | if_clause { [$1] }
-  | if_clauses SEMI if_clause { $1 @ [$3] }
+  | rev_if_clauses { Seplist.rev $1 }
+
+rev_if_clauses:
+  | if_clause { Seplist.one $1 }
+  | rev_if_clauses SEMI if_clause { Seplist.cons $3 ~sep:$2 $1 }
 
 if_clause:
-  | guard RARROW body { ($1, $2) }
+  | guard RARROW body
+  { { Ast.if_clause_guard = $1;
+        if_clause_arrow = $2;
+        if_clause_body = $3; }
+  }
+
 
 case_exp:
-  | CASE exp OF case_clauses END
+  | CASE exp OF cr_clauses END
   { nonloc (Ast.Case {
       case_begin = $1;
       case_exp = $2;
@@ -528,23 +536,30 @@ case_exp:
       case_end = $5; })
   }
 
-case_clauses:
-  | rev_case_clauses { Seplist.rev $1 }
+cr_clauses:
+  | rev_cr_clauses { Seplist.rev $1 }
 
-rev_case_clauses:
-  | case_clause { Seplist.one $1 }
-  | rev_case_clauses SEMI case_clause
-  { Seplist.cons $3 ~sep:$2 $1 }
+rev_cr_clauses:
+  | cr_clause { Seplist.one $1 }
+  | rev_cr_clauses SEMI cr_clause { Seplist.cons $3 ~sep:$2 $1 }
 
-case_clause:
+cr_clause:
   | pattern RARROW body
+  { { Ast.cr_clause_ptn = $1;
+        Ast.cr_clause_when = None;
+        Ast.cr_clause_guard = None;
+        Ast.cr_clause_arrow = $2;
+        Ast.cr_clause_body = $3; } }
+
   | pattern WHEN guard RARROW body
-  { { Ast.case_clause_ptn = $1;
-        Ast.case_clause_guard = $2;
-        Ast.case_clause_body = $3; } }
+  { { Ast.cr_clause_ptn = $1;
+        Ast.cr_clause_when = Some $2;
+        Ast.cr_clause_guard = Some $3;
+        Ast.cr_clause_arrow = $4;
+        Ast.cr_clause_body = $5; } }
 
 receive_exp:
-  | RECEIVE case_clauses END
+  | RECEIVE cr_clauses END
   { nonloc @@ Ast.Recv {
       recv_begin = $1;
       recv_clauses = $2;
@@ -556,28 +571,28 @@ receive_exp:
       recv_begin = $1;
       recv_clauses = Seplist.empty;
       recv_after = Some {
-        after_begin = $2;
-        after_timer = $3;
-        after_arrow = $4;
-        after_body = $5;
+        recv_after_begin = $2;
+        recv_after_timer = $3;
+        recv_after_arrow = $4;
+        recv_after_body = $5;
       };
       recv_end = $6; }
   }
-  | RECEIVE case_clauses AFTER exp RARROW body END
+  | RECEIVE cr_clauses AFTER exp RARROW body END
   { nonloc @@ Ast.Recv {
       recv_begin = $1;
       recv_clauses = $2;
       recv_after = Some {
-        after_begin = $3;
-        after_timer = $4;
-        after_arrow = $5;
-        after_body = $6;
+        recv_after_begin = $3;
+        recv_after_timer = $4;
+        recv_after_arrow = $5;
+        recv_after_body = $6;
       };
       recv_end = $7; }
   }
 
 fun_exp:
-  | FUN primary_exp COLON primary_exp DIV INT
+  | FUN atom COLON atom_or_var DIV integer_or_var
   { nonloc @@ Ast.Module_fun {
       module_fun_prefix = $1;
       module_fun_mname = Some $2;
@@ -586,7 +601,7 @@ fun_exp:
       module_fun_slash = $5;
       module_fun_arity = $6; }
   }
-  | FUN primary_exp DIV INT
+  | FUN atom DIV INT
   { nonloc @@ Ast.Module_fun {
       module_fun_prefix = $1;
       module_fun_mname = Some $2;
@@ -601,3 +616,62 @@ fun_exp:
       anon_fun_body = $2;
       anon_fun_end = $3; }
   }
+
+atom_or_var:
+  | atom { $1 }
+  | var { $1 }
+
+integer_or_var:
+  | integer { $1 }
+  | var { $1 }
+
+try_exp:
+  | TRY exps OF cr_clauses try_catch { Ast.nop }
+  | TRY exps try_catch { Ast.nop }
+
+try_catch:
+  | CATCH try_clauses END
+  { { Ast.try_catch_begin = Some $1;
+        try_catch_clauses = Some $2;
+        try_catch_after = None;
+        try_catch_end = $3; }
+  }
+  | CATCH try_clauses AFTER exps END
+  { { Ast.try_catch_begin = Some $1;
+        try_catch_clauses = Some $2;
+        try_catch_after = Some {
+            try_catch_after_begin = $3;
+            try_catch_after_exps = $4; };
+        try_catch_end = $5; }
+  }
+  | AFTER exps END
+  { { Ast.try_catch_begin = None;
+        try_catch_clauses = None;
+        try_catch_after = Some {
+            try_catch_after_begin = $1;
+            try_catch_after_exps = $2; };
+        try_catch_end = $3; }
+  }
+
+try_clauses:
+  | rev_try_clauses { Seplist.rev $1 }
+
+rev_try_clauses:
+  | try_clause { Seplist.one $1 }
+  | rev_try_clauses SEMI try_clause
+  { Seplist.cons $3 ~sep:$2 $1 }
+
+try_clause:
+  | exp guard body
+  { { Ast.try_clause_exn = None;
+        try_clause_exp = $1;
+        try_clause_guard = $2;
+        try_clause_body = $3; }
+  }
+  | atom_or_var COLON exp guard body
+  { { Ast.try_clause_exn = Some ($1, $2);
+        try_clause_exp = $3;
+        try_clause_guard = $4;
+        try_clause_body = $5; }
+  }
+

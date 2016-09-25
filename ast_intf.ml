@@ -39,6 +39,7 @@ and op_desc =
 type t = desc Located.t
 
 and desc =
+  | Nop (* internal use *)
   | Module of module_
   | Module_attr of module_attr
   | Fun_decl of fun_body
@@ -47,6 +48,7 @@ and desc =
   | If of if_
   | Case of case
   | Recv of recv
+  | Try of try_
   | Anon_fun of anon_fun
   | Module_fun of module_fun
   | Query of t
@@ -117,31 +119,56 @@ and case = {
   case_begin : token;
   case_exp : t;
   case_of : token;
-  case_clauses : (case_clause, token) Seplist.t;
+  case_clauses : (cr_clause, token) Seplist.t;
   case_end : token;
 }
 
-and case_clause = {
-  case_clause_ptn : t;
-  case_clause_close : token;
-  case_clause_when : token option;
-  case_clause_guard : explist option;
-  case_clause_arrow : token;
-  case_clause_body : explist;
+and cr_clause = {
+  cr_clause_ptn : t;
+  cr_clause_when : token option;
+  cr_clause_guard : explist option;
+  cr_clause_arrow : token;
+  cr_clause_body : explist;
 }
 
 and recv = {
   recv_begin : token;
-  recv_clauses : (case_clause, token) Seplist.t;
+  recv_clauses : (cr_clause, token) Seplist.t;
   recv_after : recv_after option;
   recv_end : token;
 }
 
 and recv_after = {
-  after_begin : token;
-  after_timer : t;
-  after_arrow : token;
-  after_body : explist;
+  recv_after_begin : token;
+  recv_after_timer : t;
+  recv_after_arrow : token;
+  recv_after_body : explist;
+}
+
+and try_ = {
+  try_begin : token;
+  try_of : token option;
+  try_clauses : (try_clause, token) Seplist.t option;
+  try_catch : try_catch;
+}
+
+and try_catch = {
+  try_catch_begin : token option;
+  try_catch_clauses : (try_clause, token) Seplist.t option;
+  try_catch_after : try_catch_after option;
+  try_catch_end : token;
+}
+
+and try_catch_after = {
+  try_catch_after_begin : token;
+  try_catch_after_exps : explist;
+}
+
+and try_clause = {
+  try_clause_exn : (t * token) option;
+  try_clause_exp : t;
+  try_clause_guard : explist;
+  try_clause_body : explist;
 }
 
 and anon_fun = {
@@ -252,3 +279,5 @@ let enclose open_ desc close = {
   enc_desc = desc;
   enc_close = close;
 }
+
+let nop = Located.create None Nop

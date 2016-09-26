@@ -207,7 +207,7 @@ and binexp = {
 
 and erl_list = {
   list_open : token;
-  list_head : explist;
+  list_head : explist option;
   list_bar : token option;
   list_tail : t option;
   list_close : token;

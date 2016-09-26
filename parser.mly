@@ -208,13 +208,33 @@ guard_primary_exp:
   | LPAREN guard_exp RPAREN { Ast.GuardParenexp $2 }
 
 guard_list_skel:
-  | LBRACK RBRACK { Ast.Guard_list [] }
-  | LBRACK guard_exps guard_list_skel_tail_opt RBRACK
-    { Ast.Guard_list ($2, $3) }
-
-guard_list_skel_tail_opt:
-  | BAR guard_exp { Some $2 }
-  | (* empty *) { None }
+  | LBRACK RBRACK
+  { nonloc @@ Ast.List {
+      list_open = $1;
+      list_head = None;
+      list_bar = None;
+      list_tail = None;
+      list_close = $2;
+    }
+  }
+  | LBRACK guard_exps RBRACK
+  { nonloc @@ Ast.List {
+      list_open = $1;
+      list_head = Some $2;
+      list_bar = None;
+      list_tail = None;
+      list_close = $3;
+    }
+  }
+  | LBRACK guard_exps BAR guard_exp RBRACK
+  { nonloc @@ Ast.List {
+      list_open = $1;
+      list_head = Some $2;
+      list_bar = Some $3;
+      list_tail = Some $4;
+      list_close = $5;
+    }
+  }
 
 guard_tuple_skel:
   | LBRACE guard_exps_opt RBRACE { Ast.GuardTuple $2 }
@@ -243,12 +263,12 @@ match_exp:
   | send_exp { $1 }
 
 pattern:
-  (*| atomic { $1 }*)
-  (*| var { $1 }*)
+  | atomic { $1 }
+  | var { $1 }
   | universal_pattern { $1 }
-  (*| tuple_pattern { $1 }*)
-  (*| record_pattern { $1 }*)
-  (*| list_pattern { $1 }*)
+  | tuple_pattern { $1 }
+  | record_pattern { $1 }
+  | list_pattern { $1 }
 
 universal_pattern:
   | USCORE { locate $1.loc Ast.Uscore }
@@ -444,7 +464,7 @@ list_skel:
   | LBRACK RBRACK
   { nonloc Ast.(List {
       list_open = $1;
-      list_head = [];
+      list_head = None;
       list_bar = None;
       list_tail = None;
       list_close = $2 })
@@ -452,7 +472,7 @@ list_skel:
   | LBRACK exps RBRACK
   { nonloc Ast.(List {
       list_open = $1;
-      list_head = $2;
+      list_head = Some $2;
       list_bar = None;
       list_tail = None;
       list_close = $3 })
@@ -460,7 +480,7 @@ list_skel:
   | LBRACK exps BAR exp RBRACK
   { nonloc Ast.(List {
       list_open = $1;
-      list_head = $2;
+      list_head = Some $2;
       list_bar = Some $3;
       list_tail = Some $4;
       list_close = $5 })

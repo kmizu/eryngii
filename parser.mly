@@ -4,10 +4,17 @@ let locate loc x = Located.create (Some loc) x
 let nonloc x = Located.create None x
 
 let create_binexp left op right =
-  Ast.(Binexp {
-      binexp_left = left;
-      binexp_op = op;
-      binexp_right = right })
+  let open Located in
+  match (left.loc, right.loc) with
+  | (Some lloc, Some rloc) ->
+    Located.with_range lloc rloc Ast.(Binexp {
+        binexp_left = left;
+        binexp_op = op;
+        binexp_right = right })
+  | _ -> failwith "not match"
+
+let paren open_ value close =
+  Located.with_range open_ close @@ Ast.Paren (Ast.enclose open_ value close)
 
 %}
 
@@ -148,19 +155,32 @@ fun_clause_def:
       fun_clause_body = $7 })
   }
 
-
 guard:
-  | guard_test { [$1] }
-  | guard COMMA guard_test { $1 @ [$3] }
+  | rev_guard { Seplist.rev $1 }
+
+rev_guard:
+  | guard_test { Seplist.one $1 }
+  | rev_guard COMMA guard_test { Seplist.cons $3 ~sep:$2 $1 }
 
 guard_test:
   | atom { $1 } (* true only *)
   | guard_recognizer { $1 }
   | guard_term_comparison { $1 }
-  | LPAREN guard_test RPAREN { Ast.GuardParenTest $2 }
+  | LPAREN guard_test RPAREN { paren $1 $2 $3 }
 
 guard_recognizer:
-  | LIDENT LPAREN guard_exp RPAREN { Ast.Guardfunallexp ($1, $3) }
+  | LIDENT LPAREN guard_exp RPAREN
+  { let fname = {
+      Ast.fun_name_mname = None;
+      fun_name_colon = None;
+      fun_name_fname = $1; }
+    in
+    Located.with_range $2 $4 @@ Ast.Call {
+      call_fname = fname;
+      call_open = $2;
+      call_args = Seplist.one $3;
+      call_close = $4 }
+  }
 
 guard_term_comparison:
   | guard_exp compare_op guard_exp { Ast.Guardcreate_binexp ($1, $2, $3) }
@@ -189,8 +209,11 @@ guard_exps_opt:
   | (* empty *) { [] }
 
 guard_exps:
-  | guard_exp { [$1] }
-  | guard_exps COMMA guard_exp { $1 @ [$3] }
+  | rev_guard_exps { Seplist.rev $1 }
+
+rev_guard_exps:
+  | guard_exp { Seplist.one $1 }
+  | rev_guard_exps COMMA guard_exp { Seplist.cons $3 ~sep:$2 $1 }
 
 guard_record_exp:
   | guard_primary_exp_opt NSIGN LIDENT DOT LIDENT
@@ -205,11 +228,11 @@ guard_primary_exp:
   | atomic { $1 }
   | guard_list_skel { $1 }
   | guard_tuple_skel { $1 }
-  | LPAREN guard_exp RPAREN { Ast.GuardParenexp $2 }
+  | LPAREN guard_exp RPAREN { paren $1 $2 $3 }
 
 guard_list_skel:
   | LBRACK RBRACK
-  { nonloc @@ Ast.List {
+  { Ast.create @@ Ast.List {
       list_open = $1;
       list_head = None;
       list_bar = None;
@@ -259,7 +282,7 @@ exp:
 
 match_exp:
   | pattern MATCH match_exp
-  { nonloc @@ create_binexp $1 (locate $2 Ast.Op_match) $3 }
+  { create_binexp $1 (locate $2 Ast.Op_match) $3 }
   | send_exp { $1 }
 
 pattern:
@@ -318,12 +341,12 @@ record_field_name:
 
 send_exp:
   | compare_exp SEND send_exp
-  { nonloc @@ create_binexp $1 (locate $2 Ast.Op_send) $3 }
+  { create_binexp $1 (locate $2 Ast.Op_send) $3 }
   | compare_exp { $1 }
 
 compare_exp:
   | list_conc_exp compare_op list_conc_exp
-  { nonloc @@ create_binexp $1 $2 $3 }
+  { create_binexp $1 $2 $3 }
   | list_conc_exp { $1 }
 
 compare_op:
@@ -337,8 +360,7 @@ compare_op:
   | LE { locate $1 Ast.Op_le }
 
 list_conc_exp:
-  | shift_exp list_conc_op list_conc_exp
-  { nonloc @@ create_binexp $1 $2 $3 }
+  | shift_exp list_conc_op list_conc_exp { create_binexp $1 $2 $3 }
   | shift_exp { $1 }
 
 list_conc_op:
@@ -346,16 +368,16 @@ list_conc_op:
   | LIST_DIFF { locate $1 @@ Ast.Op_list_diff }
 
 shift_exp:
-  | shift_exp shift_op mul_exp { Ast.create_binexp($1, $2, $3) }
+  | shift_exp shift_op mul_exp { create_binexp $1 $2 $3 }
   | mul_exp { $1 }
 
 shift_op:
-  | PLUS { Ast.Op_add }
-  | MINUS { Ast.Op_sub }
-  | LOR { Ast.Op_lor }
-  | LXOR { Ast.Op_lxor }
-  | LSHIFT { Ast.Op_lshift }
-  | RSHIFT { Ast.Op_rshift }
+  | PLUS { locate $1 @@ Ast.Op_add }
+  | MINUS { locate $1 @@ Ast.Op_sub }
+  | LOR { locate $1 @@ Ast.Op_lor }
+  | LXOR { locate $1 @@ Ast.Op_lxor }
+  | LSHIFT { locate $1 @@ Ast.Op_lshift }
+  | RSHIFT { locate $1 @@ Ast.Op_rshift }
 
 mul_exp:
   | mul_exp mul_op prefix_exp { create_binexp $1 $2 $3 }
@@ -364,21 +386,21 @@ mul_exp:
   | prefix_exp { $1 }
 
 mul_op:
-  | MUL { Ast.Op_mul }
-  | DIV { Ast.Op_div }
-  | QUO { Ast.Op_quo }
-  | REM { Ast.Op_rem }
-  | LAND { Ast.Op_land }
+  | MUL { locate $1 @@ Ast.Op_mul }
+  | DIV { locate $1 @@ Ast.Op_div }
+  | QUO { locate $1 @@ Ast.Op_quo }
+  | REM { locate $1 @@ Ast.Op_rem }
+  | LAND { locate $1 @@ Ast.Op_land }
 
 prefix_exp:
-  | prefix_op record_exp { Ast.Unaryexp($2, $1) }
+  | prefix_op record_exp { locate $1 @@ Ast.Unexp ($2, $1) }
   | record_exp { $1 }
 
 prefix_op:
-  | PLUS { Ast.Op_pos }
-  | MINUS { Ast.Op_neg }
-  | NOT { Ast.Op_not }
-  | LNOT { Ast.Op_lnot }
+  | PLUS { locate $1 @@ Ast.Op_pos }
+  | MINUS { locate $1 @@ Ast.Op_neg }
+  | NOT { locate $1 @@ Ast.Op_not }
+  | LNOT { locate $1 @@ Ast.Op_lnot }
 
 record_exp:
 (*
@@ -428,8 +450,7 @@ primary_exp:
   | receive_exp { $1 }
   | fun_exp { $1 }
   | try_exp { $1 }
-  | LPAREN exp RPAREN
-  { nonloc Ast.(Paren (enclose $1 $2 $3)) }
+  | LPAREN exp RPAREN { paren $1 $2 $3 }
 
 var:
   | UIDENT { locate $1.loc (Ast.Var $1) }

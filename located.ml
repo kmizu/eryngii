@@ -6,6 +6,10 @@ type 'a t = {
 let create loc desc =
   { desc; loc }
 
+let locate loc desc = create (Some loc) desc
+
+let less desc = create None desc
+
 let with_range start_loc end_loc desc =
   create (Some (Location.union start_loc end_loc)) desc
 

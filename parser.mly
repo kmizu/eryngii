@@ -1,7 +1,6 @@
 %{
 
-let locate loc x = Located.create (Some loc) x
-let nonloc x = Located.create None x
+open Located
 
 let create_binexp left op right =
   let open Located in
@@ -94,24 +93,24 @@ module_:
 
 module_decls:
   | module_attr+ EOF
-  { nonloc @@ Ast.Module {
+  { less @@ Ast.Module {
       module_attrs = $1;
       module_decls = []; }
   }
   | module_attr+ fun_decl+ EOF
-  { nonloc @@ Ast.Module {
+  { less @@ Ast.Module {
       module_attrs = $1;
       module_decls = $2; }
   }
   | fun_decl+ EOF
-  { nonloc @@ Ast.Module {
+  { less @@ Ast.Module {
       module_attrs = [];
       module_decls = $1; }
   }
 
 module_attr:
   | MINUS LIDENT LPAREN exp RPAREN DOT
-  { (nonloc @@ Ast.Module_attr {
+  { (less @@ Ast.Module_attr {
       module_attr_minus = $1;
       module_attr_tag = $2;
       module_attr_open = $3;
@@ -121,7 +120,7 @@ module_attr:
 
 fun_decl:
   | fun_clauses DOT
-  { (nonloc @@ Ast.Fun_decl $1, $2) }
+  { (less @@ Ast.Fun_decl $1, $2) }
 
 fun_clauses:
   | fun_clause { Seplist.one $1 }
@@ -170,20 +169,16 @@ guard_test:
 
 guard_recognizer:
   | LIDENT LPAREN guard_exp RPAREN
-  { let fname = {
-      Ast.fun_name_mname = None;
-      fun_name_colon = None;
-      fun_name_fname = $1; }
-    in
+  {
     Located.with_range $2 $4 @@ Ast.Call {
-      call_fname = fname;
+      call_fname = Ast.simple_fun_name $1;
       call_open = $2;
       call_args = Seplist.one $3;
       call_close = $4 }
   }
 
 guard_term_comparison:
-  | guard_exp compare_op guard_exp { Ast.Guardcreate_binexp ($1, $2, $3) }
+  | guard_exp compare_op guard_exp { create_binexp $1 $2 $3 }
 
 guard_exp:
   | guard_shift_exp { $1 }
@@ -196,17 +191,23 @@ guard_mul_exp:
   | guard_mul_exp mul_op guard_prefix_exp { Ast.Guardcreate_binexp ($1, $2, $3) }
 
 guard_prefix_exp:
-  | prefix_op guard_app_exp { Ast.GuardUnaryexp ($2, $1) }
+  | prefix_op guard_app_exp { less @@ Ast.Unexp ($1, $2) }
   | guard_app_exp { $1 }
 
 guard_app_exp:
-  | LIDENT LPAREN guard_exps_opt RPAREN { Ast.GuardAppexp ($1, $3) }
+  | LIDENT LPAREN guard_exps_opt RPAREN
+  { less @@ Ast.Call {
+      call_fname = Ast.simple_fun_name $1;
+      call_open = $2;
+      call_args = $3;
+      call_close = $4 }
+  }
   | guard_record_exp { $1 }
   | guard_primary_exp { $1 }
 
 guard_exps_opt:
   | guard_exps { $1 }
-  | (* empty *) { [] }
+  | (* empty *) { Seplist.empty }
 
 guard_exps:
   | rev_guard_exps { Seplist.rev $1 }
@@ -241,7 +242,7 @@ guard_list_skel:
     }
   }
   | LBRACK guard_exps RBRACK
-  { nonloc @@ Ast.List {
+  { less @@ Ast.List {
       list_open = $1;
       list_head = Some $2;
       list_bar = None;
@@ -250,7 +251,7 @@ guard_list_skel:
     }
   }
   | LBRACK guard_exps BAR guard_exp RBRACK
-  { nonloc @@ Ast.List {
+  { less @@ Ast.List {
       list_open = $1;
       list_head = Some $2;
       list_bar = Some $3;
@@ -277,7 +278,7 @@ exps_opt:
   | (* empty *) { Seplist.empty }
 
 exp:
-  | CATCH exp { nonloc @@ Ast.Catch ($1, $2) }
+  | CATCH exp { less @@ Ast.Catch ($1, $2) }
   | match_exp { $1 }
 
 match_exp:
@@ -479,11 +480,11 @@ float:
 
 tuple_skel:
   | LBRACE exps_opt RBRACE
-  { nonloc Ast.(Tuple (enclose $1 $2 $3)) }
+  { less Ast.(Tuple (enclose $1 $2 $3)) }
 
 list_skel:
   | LBRACK RBRACK
-  { nonloc Ast.(List {
+  { less Ast.(List {
       list_open = $1;
       list_head = None;
       list_bar = None;
@@ -491,7 +492,7 @@ list_skel:
       list_close = $2 })
   }
   | LBRACK exps RBRACK
-  { nonloc Ast.(List {
+  { less Ast.(List {
       list_open = $1;
       list_head = Some $2;
       list_bar = None;
@@ -499,7 +500,7 @@ list_skel:
       list_close = $3 })
   }
   | LBRACK exps BAR exp RBRACK
-  { nonloc Ast.(List {
+  { less Ast.(List {
       list_open = $1;
       list_head = Some $2;
       list_bar = Some $3;
@@ -509,7 +510,7 @@ list_skel:
 
 list_compr:
   | LBRACK exp DBAR list_compr_quals RBRACK
-  { nonloc @@ Ast.List_compr {
+  { less @@ Ast.List_compr {
       compr_open = $1;
       compr_exp = $2;
       compr_sep = $3;
@@ -531,7 +532,7 @@ list_compr_qual:
 
 list_compr_gen:
   | pattern LARROW exp
-  { nonloc @@ Ast.List_compr_gen {
+  { less @@ Ast.List_compr_gen {
       gen_ptn = $1;
       gen_arrow = $2;
       gen_exp = $3 }
@@ -542,11 +543,11 @@ list_compr_filter:
 
 block_exp:
   | BEGIN body END
-  { nonloc @@ Ast.(Block (enclose $2 $2 $3)) }
+  { less @@ Ast.(Block (enclose $2 $2 $3)) }
 
 if_exp:
   | IF if_clauses END
-  { nonloc (Ast.If {
+  { less (Ast.If {
       if_begin = $1;
       if_clauses = $2;
       if_end = $3 })
@@ -569,7 +570,7 @@ if_clause:
 
 case_exp:
   | CASE exp OF cr_clauses END
-  { nonloc (Ast.Case {
+  { less (Ast.Case {
       case_begin = $1;
       case_exp = $2;
       case_of = $3;
@@ -601,14 +602,14 @@ cr_clause:
 
 receive_exp:
   | RECEIVE cr_clauses END
-  { nonloc @@ Ast.Recv {
+  { less @@ Ast.Recv {
       recv_begin = $1;
       recv_clauses = $2;
       recv_after = None;
       recv_end = $3; }
   }
   | RECEIVE AFTER exp RARROW body END
-  { nonloc @@ Ast.Recv {
+  { less @@ Ast.Recv {
       recv_begin = $1;
       recv_clauses = Seplist.empty;
       recv_after = Some {
@@ -620,7 +621,7 @@ receive_exp:
       recv_end = $6; }
   }
   | RECEIVE cr_clauses AFTER exp RARROW body END
-  { nonloc @@ Ast.Recv {
+  { less @@ Ast.Recv {
       recv_begin = $1;
       recv_clauses = $2;
       recv_after = Some {
@@ -634,7 +635,7 @@ receive_exp:
 
 fun_exp:
   | FUN atom COLON atom_or_var DIV integer_or_var
-  { nonloc @@ Ast.Module_fun {
+  { less @@ Ast.Module_fun {
       module_fun_prefix = $1;
       module_fun_mname = Some $2;
       module_fun_colon = Some $3;
@@ -643,7 +644,7 @@ fun_exp:
       module_fun_arity = $6; }
   }
   | FUN atom DIV INT
-  { nonloc @@ Ast.Module_fun {
+  { less @@ Ast.Module_fun {
       module_fun_prefix = $1;
       module_fun_mname = Some $2;
       module_fun_colon = None;
@@ -652,7 +653,7 @@ fun_exp:
       module_fun_arity = $4; }
   }
   | FUN fun_clauses END
-  { nonloc @@ Ast.Anon_fun {
+  { less @@ Ast.Anon_fun {
       anon_fun_begin = $1;
       anon_fun_body = $2;
       anon_fun_end = $3; }

@@ -10,3 +10,9 @@ let create desc =
   | List list ->
     Located.with_range list.list_open list.list_close desc
   | _ -> failwith "notimpl"
+
+let simple_fun_name name =
+  { fun_name_mname = None;
+    fun_name_colon = None;
+    fun_name_fname = name; }
+

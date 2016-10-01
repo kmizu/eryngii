@@ -158,110 +158,8 @@ guard:
   | rev_guard { Seplist.rev $1 }
 
 rev_guard:
-  | guard_test { Seplist.one $1 }
-  | rev_guard COMMA guard_test { Seplist.cons $3 ~sep:$2 $1 }
-
-guard_test:
-  | atom { $1 } (* true only *)
-  | guard_recognizer { $1 }
-  | guard_term_comparison { $1 }
-  | LPAREN guard_test RPAREN { paren $1 $2 $3 }
-
-guard_recognizer:
-  | LIDENT LPAREN guard_exp RPAREN
-  {
-    Located.with_range $2 $4 @@ Ast.Call {
-      call_fname = Ast.simple_fun_name $1;
-      call_open = $2;
-      call_args = Seplist.one $3;
-      call_close = $4 }
-  }
-
-guard_term_comparison:
-  | guard_exp compare_op guard_exp { create_binexp $1 $2 $3 }
-
-guard_exp:
-  | guard_shift_exp { $1 }
-
-guard_shift_exp:
-  | guard_shift_exp shift_op guard_mul_exp { Ast.Guardcreate_binexp ($1, $2, $3) }
-  | guard_mul_exp { $1 }
-
-guard_mul_exp:
-  | guard_mul_exp mul_op guard_prefix_exp { Ast.Guardcreate_binexp ($1, $2, $3) }
-
-guard_prefix_exp:
-  | prefix_op guard_app_exp { less @@ Ast.Unexp ($1, $2) }
-  | guard_app_exp { $1 }
-
-guard_app_exp:
-  | LIDENT LPAREN guard_exps_opt RPAREN
-  { less @@ Ast.Call {
-      call_fname = Ast.simple_fun_name $1;
-      call_open = $2;
-      call_args = $3;
-      call_close = $4 }
-  }
-  | guard_record_exp { $1 }
-  | guard_primary_exp { $1 }
-
-guard_exps_opt:
-  | guard_exps { $1 }
-  | (* empty *) { Seplist.empty }
-
-guard_exps:
-  | rev_guard_exps { Seplist.rev $1 }
-
-rev_guard_exps:
-  | guard_exp { Seplist.one $1 }
-  | rev_guard_exps COMMA guard_exp { Seplist.cons $3 ~sep:$2 $1 }
-
-guard_record_exp:
-  | guard_primary_exp_opt NSIGN LIDENT DOT LIDENT
-    { Ast.GuardRecordexp ($1, $3, $5) }
-
-guard_primary_exp_opt:
-  | guard_primary_exp { Some $1 }
-  | (* empty *) { None }
-
-guard_primary_exp:
-  | var { $1 }
-  | atomic { $1 }
-  | guard_list_skel { $1 }
-  | guard_tuple_skel { $1 }
-  | LPAREN guard_exp RPAREN { paren $1 $2 $3 }
-
-guard_list_skel:
-  | LBRACK RBRACK
-  { Ast.create @@ Ast.List {
-      list_open = $1;
-      list_head = None;
-      list_bar = None;
-      list_tail = None;
-      list_close = $2;
-    }
-  }
-  | LBRACK guard_exps RBRACK
-  { less @@ Ast.List {
-      list_open = $1;
-      list_head = Some $2;
-      list_bar = None;
-      list_tail = None;
-      list_close = $3;
-    }
-  }
-  | LBRACK guard_exps BAR guard_exp RBRACK
-  { less @@ Ast.List {
-      list_open = $1;
-      list_head = Some $2;
-      list_bar = Some $3;
-      list_tail = Some $4;
-      list_close = $5;
-    }
-  }
-
-guard_tuple_skel:
-  | LBRACE guard_exps_opt RBRACE { Ast.GuardTuple $2 }
+  | exp { Seplist.one $1 }
+  | rev_guard COMMA exp { Seplist.cons $3 ~sep:$2 $1 }
 
 body:
   | exps { $1 }
@@ -282,63 +180,9 @@ exp:
   | match_exp { $1 }
 
 match_exp:
-  | pattern MATCH match_exp
+  | exp MATCH match_exp
   { create_binexp $1 (locate $2 Ast.Op_match) $3 }
   | send_exp { $1 }
-
-pattern:
-  | atomic { $1 }
-  | var { $1 }
-  | universal_pattern { $1 }
-  | tuple_pattern { $1 }
-  | record_pattern { $1 }
-  | list_pattern { $1 }
-
-universal_pattern:
-  | USCORE { locate $1.loc Ast.Uscore }
-
-tuple_pattern:
-  | LBRACE patterns_opt RBRACE { Ast.Tuple $2 }
-
-list_pattern:
-  | LBRACK RBRACK { Ast.List ([], None) }
-  | LBRACK patterns list_pattern_tail_opt RBRACK { Ast.List ($2, $3) }
-
-list_pattern_tail_opt:
-  | pattern { Some $1 }
-  | (* empty *) { None }
-
-patterns:
-  | rev_patterns { Seplist.rev $1 }
-
-rev_patterns:
-  | pattern { Seplist.one $1 }
-  | patterns COMMA pattern
-  { Seplist.cons $3 ~sep:$2 $1 }
-
-patterns_opt:
-  | patterns { $1 }
-  | (* empty *) { [] }
-
-record_pattern:
-  | NSIGN record_type record_pattern_tuple { Ast.Record ($2, $3) }
-
-record_type:
-  | atom { $1 }
-
-record_pattern_tuple:
-  | LBRACE record_field_patterns RBRACE { $2 }
-  | LBRACE RBRACE { [] }
-
-record_field_patterns:
-  | record_field_pattern { [$1] }
-  | record_field_patterns COMMA record_field_pattern { $1 @ [$3] }
-
-record_field_pattern:
-  | record_field_name MATCH pattern { Ast.Assoc ($1, $3) }
-
-record_field_name:
-  | atom { $1 }
 
 send_exp:
   | compare_exp SEND send_exp
@@ -383,7 +227,7 @@ shift_op:
 mul_exp:
   | mul_exp mul_op prefix_exp { create_binexp $1 $2 $3 }
   | mul_exp AND prefix_exp
-  { create_binexp $1 (create_op $2 Ast.OpAnd) $3 }
+  { create_binexp $1 (locate $2 @@ Ast.Op_and) $3 }
   | prefix_exp { $1 }
 
 mul_op:
@@ -394,7 +238,7 @@ mul_op:
   | LAND { locate $1 @@ Ast.Op_land }
 
 prefix_exp:
-  | prefix_op record_exp { locate $1 @@ Ast.Unexp ($2, $1) }
+  | prefix_op record_exp { less @@ Ast.Unexp ($1, $2) }
   | record_exp { $1 }
 
 prefix_op:
@@ -410,7 +254,10 @@ record_exp:
   | record_exp_opt NSIGN record_type record_update_tuple
     { Ast.RecordAccessexp ($1, $3, $4) }
 *)
-  | app_exp { $1 }
+  | call_exp { $1 }
+
+record_field_name:
+  | atom { $1 }
 
 record_exp_opt:
   | record_exp { Some $1 }
@@ -430,13 +277,26 @@ record_field_updates:
 record_field_update:
   | record_field_name MATCH exp { Ast.Assoc ($1, $3) }
 
-app_exp:
+call_exp:
   | primary_exp LPAREN exps_opt RPAREN
-    { Ast.funallexp { Ast.fun_call_mod = None;
-      Ast.fun_call_fun = $1; Ast.fun_call_args = $3; } }
+  { less @@ Ast.Call {
+      call_fname = Ast.simple_fun_name $1;
+      call_open = $2;
+      call_args = $3;
+      call_close = $4; }
+  }
   | primary_exp COLON primary_exp LPAREN exps_opt RPAREN
-    { Ast.funallexp { Ast.fun_call_mod = Some $1;
-      Ast.fun_call_fun = $3; Ast.fun_call_args = $5; } }
+  { let fname = {
+      Ast.fun_name_mname = Some $1;
+      fun_name_colon = Some $2;
+      fun_name_fname = $3; }
+    in
+    less @@ Ast.Call {
+      call_fname = fname;
+      call_open = $4;
+      call_args = $5;
+      call_close = $6; }
+  }
   | primary_exp { $1 }
 
 (* TODO *)
@@ -455,6 +315,7 @@ primary_exp:
 
 var:
   | UIDENT { locate $1.loc (Ast.Var $1) }
+  | USCORE { locate $1.loc Ast.Uscore }
 
 atomic:
   | atom { $1 }
@@ -567,7 +428,6 @@ if_clause:
         if_clause_body = $3; }
   }
 
-
 case_exp:
   | CASE exp OF cr_clauses END
   { less (Ast.Case {
@@ -599,6 +459,20 @@ cr_clause:
         Ast.cr_clause_guard = Some $3;
         Ast.cr_clause_arrow = $4;
         Ast.cr_clause_body = $5; } }
+
+patterns:
+  | rev_patterns { Seplist.rev $1 }
+
+rev_patterns:
+  | pattern { Seplist.one $1 }
+  | patterns COMMA pattern { Seplist.cons $3 ~sep:$2 $1 }
+
+patterns_opt:
+  | patterns { $1 }
+  | (* empty *) { Seplist.empty }
+
+pattern:
+  | exp { $1 }
 
 receive_exp:
   | RECEIVE cr_clauses END
@@ -716,4 +590,3 @@ try_clause:
         try_clause_guard = $4;
         try_clause_body = $5; }
   }
-

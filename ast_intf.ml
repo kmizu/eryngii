@@ -189,7 +189,7 @@ and module_fun = {
 and fun_name = {
   fun_name_mname : t option;
   fun_name_colon : token option;
-  fun_name_fname : text;
+  fun_name_fname : t;
 }
 
 and call = {

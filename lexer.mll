@@ -2,7 +2,7 @@
 open Lexing
 open Parser
 
-exception SyntaxError of string
+exception Syntax_error of Position.t * string
 
 let next_line lexbuf =
   let pos = lexbuf.lex_curr_p in
@@ -10,6 +10,31 @@ let next_line lexbuf =
     { pos with pos_bol = lexbuf.lex_curr_pos;
                pos_lnum = pos.pos_lnum + 1
     }
+
+let revise_pos pos lexbuf =
+  Position.of_lexing_pos
+    { pos with pos_bol = pos.pos_cnum - lexbuf.lex_curr_p.pos_bol + 1 }
+
+let start_pos lexbuf =
+  revise_pos (lexeme_start_p lexbuf) lexbuf
+
+let end_pos lexbuf =
+  let p = lexeme_end_p lexbuf in
+  let p' = { p with pos_cnum = p.pos_cnum - 1 } in
+  revise_pos p' lexbuf
+
+let to_loc lexbuf =
+  Location.create (start_pos lexbuf) (end_pos lexbuf)
+
+let to_word lexbuf =
+  Located.locate (to_loc lexbuf) (lexeme lexbuf)
+
+let strlit lexbuf read =
+  let sp = start_pos lexbuf in
+  let contents = read (Buffer.create 17) lexbuf in
+  let loc = Location.create sp (end_pos lexbuf) in
+  Located.locate loc contents
+
 }
 
 let int = '-'? ['0'-'9'] ['0'-'9']*
@@ -25,22 +50,21 @@ rule read =
   parse
   | white   { read lexbuf }
   | newline { next_line lexbuf; read lexbuf }
-  | int     { INT (int_of_string (Lexing.lexeme lexbuf)) }
-  | float   { FLOAT (float_of_string (Lexing.lexeme lexbuf)) }
-  | '"'     { read_string (Buffer.create 17) lexbuf } 
-  | '{'     { LBRACE }
-  | '}'     { RBRACE }
-  | '['     { LBRACK }
-  | ']'     { RBRACK }
-  | ':'     { COLON }
-  | ','     { COMMA }
-  | _       { raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf))
-  }
+  | int     { INT (to_word lexbuf) }
+  | float   { FLOAT (to_word lexbuf) }
+  | '"'     { STRING (strlit lexbuf read_string) } 
+  | '{'     { LBRACE (to_loc lexbuf) }
+  | '}'     { RBRACE (to_loc lexbuf) }
+  | '['     { LBRACK (to_loc lexbuf) }
+  | ']'     { RBRACK (to_loc lexbuf) }
+  | ':'     { COLON (to_loc lexbuf) }
+  | ','     { COMMA (to_loc lexbuf) }
+  | _       { raise (Syntax_error (start_pos lexbuf, "Unexpected char: " ^ Lexing.lexeme lexbuf)) }
   | eof     { EOF }
 
 and read_string buf =
   parse
-  | '"'       { STRING (Buffer.contents buf) }
+  | '"'       { Buffer.contents buf }
   | '\\' '/'  { Buffer.add_char buf '/'; read_string buf lexbuf }
   | '\\' '\\' { Buffer.add_char buf '\\'; read_string buf lexbuf }
   | '\\' 'b'  { Buffer.add_char buf '\b'; read_string buf lexbuf }
@@ -52,6 +76,6 @@ and read_string buf =
     { Buffer.add_string buf (Lexing.lexeme lexbuf);
       read_string buf lexbuf
     }
-  | _ { raise (SyntaxError ("Illegal string character: " ^ Lexing.lexeme lexbuf)) }
-  | eof { raise (SyntaxError ("String is not terminated")) }
+  | _ { raise (Syntax_error (start_pos lexbuf, "Illegal string character: " ^ Lexing.lexeme lexbuf)) }
+  | eof { raise (Syntax_error (start_pos lexbuf, "String is not terminated")) }
 

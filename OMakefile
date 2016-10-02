@@ -157,6 +157,8 @@ if $(not $(defined PREFIX))
 FILES[] =
 	ast
 	ast_intf
+	conf
+	lexer
 	located
 	location
 	main

@@ -79,9 +79,12 @@ let paren open_ value close =
 %token <Ast.token> TRY              (* "try" *)
 %token EOF
 
-%start <Ast.t option> module_
+%start <Ast.t option> prog
 
 %%
+
+prog:
+  | module_ { $1 }
 
 module_:
   | EOF { None }

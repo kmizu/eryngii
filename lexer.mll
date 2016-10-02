@@ -59,6 +59,10 @@ rule read =
   | ']'     { RBRACK (to_loc lexbuf) }
   | ':'     { COLON (to_loc lexbuf) }
   | ','     { COMMA (to_loc lexbuf) }
+  | '+'     { PLUS (to_loc lexbuf) }
+  | '-'     { MINUS (to_loc lexbuf) }
+  | '*'     { MUL (to_loc lexbuf) }
+  | '/'     { DIV (to_loc lexbuf) }
   | _       { raise (Syntax_error (start_pos lexbuf, "Unexpected char: " ^ Lexing.lexeme lexbuf)) }
   | eof     { EOF }
 
@@ -78,4 +82,3 @@ and read_string buf =
     }
   | _ { raise (Syntax_error (start_pos lexbuf, "Illegal string character: " ^ Lexing.lexeme lexbuf)) }
   | eof { raise (Syntax_error (start_pos lexbuf, "String is not terminated")) }
-

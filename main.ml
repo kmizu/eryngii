@@ -8,14 +8,13 @@ let file_exists file =
     exit (-1)
   | `Yes -> ()
 
-let check_syntax file =
+let parse_file file =
   file_exists file;
   In_channel.with_file file
     ~f:(fun chan ->
           let buf = Lexing.from_channel chan in
           try begin
-            let _ = Parser.prog Lexer.read buf in
-            ()
+            Parser.prog Lexer.read buf
           end with
           | Lexer.Syntax_error (pos, msg) ->
             let open Position in
@@ -36,15 +35,20 @@ let command =
       +> flag "-d" no_arg ~doc:" debug output"
       +> flag "-v" no_arg ~doc:" print verbose message"
       +> flag "-syntax" no_arg ~doc:" check syntax only"
+      +> flag "-debug-ast" no_arg ~doc:" print parse tree"
       +> anon (maybe ("filename" %: string))
     )
-    (fun debug verbose syntax file_opt () ->
+    (fun debug verbose syntax debug_ast file_opt () ->
       try
         Printexc.record_backtrace true;
         match file_opt with
         | Some file ->
           if syntax then
-            check_syntax file
+            ignore @@ parse_file file
+          else if debug_ast then
+            match parse_file file with
+            | Some node -> printf "%s" (Ast.to_string node)
+            | None -> printf "fail parse"
           else
             () (* TODO *)
         | None ->

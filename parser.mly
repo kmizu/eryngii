@@ -311,6 +311,7 @@ primary_exp:
   | receive_exp { $1 }
   | fun_exp { $1 }
   | try_exp { $1 }
+  | block_exp { $1 }
   | LPAREN exp RPAREN { paren $1 $2 $3 }
 
 var:
@@ -404,7 +405,7 @@ list_compr_filter:
 
 block_exp:
   | BEGIN body END
-  { less @@ Ast.(Block (enclose $2 $2 $3)) }
+  { less @@ Ast.(Block (enclose $1 $2 $3)) }
 
 if_exp:
   | IF if_clauses END

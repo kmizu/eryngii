@@ -52,7 +52,7 @@ and desc =
   | Anon_fun of anon_fun
   | Module_fun of module_fun
   | Query of t
-  | Unexp of (token * t)
+  | Unexp of (op * t)
   | Binexp of binexp
   | Call of call
   | Qual of text * text (* atom '.' atom *)
@@ -66,7 +66,7 @@ and desc =
   | Int of text
   | Float of text
   | List of erl_list
-  | Tuple of explist option enclosed
+  | Tuple of explist enclosed
   | Record of record
   | Field of field
   | Update_record of t * record
@@ -126,7 +126,7 @@ and case = {
 and cr_clause = {
   cr_clause_ptn : t;
   cr_clause_when : token option;
-  cr_clause_guard : explist option;
+  cr_clause_guard : explist;
   cr_clause_arrow : token;
   cr_clause_body : explist;
 }
@@ -183,7 +183,7 @@ and module_fun = {
   module_fun_colon : token option;
   module_fun_fname : t;
   module_fun_slash : token;
-  module_fun_arity : text;
+  module_fun_arity : t;
 }
 
 and fun_name = {
@@ -207,7 +207,7 @@ and binexp = {
 
 and erl_list = {
   list_open : token;
-  list_head : explist option;
+  list_head : explist;
   list_bar : token option;
   list_tail : t option;
   list_close : token;

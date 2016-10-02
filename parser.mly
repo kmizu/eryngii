@@ -314,30 +314,30 @@ primary_exp:
   | LPAREN exp RPAREN { paren $1 $2 $3 }
 
 var:
-  | UIDENT { locate $1.loc (Ast.Var $1) }
-  | USCORE { locate $1.loc Ast.Uscore }
+  | UIDENT { create $1.loc (Ast.Var $1) }
+  | USCORE { locate $1 Ast.Uscore }
 
 atomic:
   | atom { $1 }
   | char { $1 }
-  | string { locate $1.loc (Ast.String $1) }
+  | string { $1 }
   | integer { $1 }
   | float { $1 }
 
 atom:
-  | LIDENT { locate $1.loc (Ast.Atom $1) }
+  | LIDENT { create $1.loc (Ast.Atom $1) }
 
 char:
-  | CHAR { locate $1.loc (Ast.Char $1) }
+  | CHAR { create $1.loc (Ast.Char $1) }
 
 string:
-  | STRING { locate $1.loc (Ast.String $1) }
+  | STRING { create $1.loc (Ast.String $1) }
 
 integer:
-  | INT { locate $1.loc (Ast.Int $1) }
+  | INT { create $1.loc (Ast.Int $1) }
 
 float:
-  | FLOAT { locate $1.loc (Ast.Float $1) }
+  | FLOAT { create $1.loc (Ast.Float $1) }
 
 tuple_skel:
   | LBRACE exps_opt RBRACE
@@ -347,7 +347,7 @@ list_skel:
   | LBRACK RBRACK
   { less Ast.(List {
       list_open = $1;
-      list_head = None;
+      list_head = Seplist.empty;
       list_bar = None;
       list_tail = None;
       list_close = $2 })
@@ -355,7 +355,7 @@ list_skel:
   | LBRACK exps RBRACK
   { less Ast.(List {
       list_open = $1;
-      list_head = Some $2;
+      list_head = $2;
       list_bar = None;
       list_tail = None;
       list_close = $3 })
@@ -363,7 +363,7 @@ list_skel:
   | LBRACK exps BAR exp RBRACK
   { less Ast.(List {
       list_open = $1;
-      list_head = Some $2;
+      list_head = $2;
       list_bar = Some $3;
       list_tail = Some $4;
       list_close = $5 })
@@ -449,14 +449,14 @@ cr_clause:
   | pattern RARROW body
   { { Ast.cr_clause_ptn = $1;
         Ast.cr_clause_when = None;
-        Ast.cr_clause_guard = None;
+        Ast.cr_clause_guard = Seplist.empty;
         Ast.cr_clause_arrow = $2;
         Ast.cr_clause_body = $3; } }
 
   | pattern WHEN guard RARROW body
   { { Ast.cr_clause_ptn = $1;
         Ast.cr_clause_when = Some $2;
-        Ast.cr_clause_guard = Some $3;
+        Ast.cr_clause_guard = $3;
         Ast.cr_clause_arrow = $4;
         Ast.cr_clause_body = $5; } }
 
@@ -517,12 +517,12 @@ fun_exp:
       module_fun_slash = $5;
       module_fun_arity = $6; }
   }
-  | FUN atom DIV INT
+  | FUN atom DIV integer_or_var
   { less @@ Ast.Module_fun {
       module_fun_prefix = $1;
-      module_fun_mname = Some $2;
+      module_fun_mname = None;
       module_fun_colon = None;
-      module_fun_fname = None;
+      module_fun_fname = $2;
       module_fun_slash = $3;
       module_fun_arity = $4; }
   }

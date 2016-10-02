@@ -234,8 +234,8 @@ mul_op:
   | LAND { locate $1 @@ Ast.Op_land }
 
 prefix_exp:
-  | prefix_op record_exp { less @@ Ast.Unexp ($1, $2) }
-  | record_exp { $1 }
+  | prefix_op primary_exp { less @@ Ast.Unexp ($1, $2) }
+  | primary_exp { $1 }
 
 prefix_op:
   | PLUS { locate $1 @@ Ast.Op_pos }
@@ -244,34 +244,47 @@ prefix_op:
   | LNOT { locate $1 @@ Ast.Op_lnot }
 
 record_exp:
-(*
-  | record_exp_opt NSIGN record_type DOT record_field_name
-    { Ast.RecordCreationexp ($1, $3, $5) }
-  | record_exp_opt NSIGN record_type record_update_tuple
-    { Ast.RecordAccessexp ($1, $3, $4) }
-*)
+  | record_prefix_opt NSIGN LIDENT DOT LIDENT
+  { less @@ Ast.Field {
+      field_exp = $1;
+      field_sharp = $2;
+      field_rname = $3;
+      field_sep = $4;
+      field_fname = $5; }
+  }
+  | record_prefix_opt NSIGN LIDENT LBRACE record_field_updates_opt RBRACE
+  { less @@ Ast.Update {
+      update_exp = $1;
+      update_sharp = $2;
+      update_name = $3;
+      update_open = $4;
+      update_assocs = $5;
+      update_close = $6; }
+  }
   | call_exp { $1 }
 
-record_field_name:
-  | atom { $1 }
-
-record_exp_opt:
-  | record_exp { Some $1 }
+record_prefix_opt:
+  | exp { Some $1 }
   | (* empty *) { None }
-
-record_update_tuple:
-  | LBRACE record_field_updates_opt RBRACE { $2 }
 
 record_field_updates_opt:
   | record_field_updates { $1 }
-  | (* empty *) { [] }
+  | (* empty *) { Seplist.empty }
 
 record_field_updates:
-  | record_field_update { [$1] }
-  | record_field_updates COMMA record_field_update { $1 @ [$3] }
+  | rev_record_field_updates { Seplist.rev $1 }
+
+rev_record_field_updates:
+  | record_field_update { Seplist.one $1 }
+  | rev_record_field_updates COMMA record_field_update
+  { Seplist.cons $3 ~sep:$2 $1 }
 
 record_field_update:
-  | record_field_name MATCH exp { Ast.Assoc ($1, $3) }
+  | LIDENT MATCH exp
+  { { Ast.assoc_key = $1;
+        assoc_val = $3;
+        assoc_sep = $2; }
+  }
 
 call_exp:
   | primary_exp LPAREN exps_opt RPAREN
@@ -295,7 +308,6 @@ call_exp:
   }
   | primary_exp { $1 }
 
-(* TODO *)
 primary_exp:
   | var { $1 }
   | atomic { $1 }

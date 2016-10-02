@@ -67,9 +67,8 @@ and desc =
   | Float of text
   | List of erl_list
   | Tuple of explist enclosed
-  | Record of record
   | Field of field
-  | Update_record of t * record
+  | Update of update
   | List_compr of compr (* list comprehension *)
   | List_compr_gen of list_compr_gen
   | Map of map
@@ -227,22 +226,23 @@ and list_compr_gen = {
   gen_exp : t;
 }
 
-and record = {
-  rec_sharp : token;
-  rec_name : text;
-  rec_open : token;
-  rec_assocs : (rec_assoc, token) Seplist.t;
-  rec_close : token;
+and update = {
+  update_exp : t option;
+  update_sharp : token;
+  update_name : text;
+  update_open : token;
+  update_assocs : (assoc, token) Seplist.t;
+  update_close : token;
 }
 
-and rec_assoc = {
-  rec_assoc_key : t;
-  rec_assoc_val : t;
-  rec_assoc_sep : token;
+and assoc = {
+  assoc_key : text;
+  assoc_val : t;
+  assoc_sep : token;
 }
 
 and field = {
-  field_exp : t;
+  field_exp : t option;
   field_sharp : token;
   field_rname : text;
   field_sep : token;

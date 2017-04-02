@@ -39,9 +39,8 @@ let strlit lexbuf read =
 
 let int = '-'? ['0'-'9'] ['0'-'9']*
 let digit = ['0'-'9']
-let frac = '.' digit*
 let exp = ['e' 'E'] ['-' '+']? digit+
-let float = digit* frac? exp?
+let float = digit+ '.' digit+ exp?
 let white = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
 let lower = ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*

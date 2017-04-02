@@ -37,8 +37,8 @@ let strlit lexbuf read =
 
 }
 
-let int = '-'? ['0'-'9'] ['0'-'9']*
 let digit = ['0'-'9']
+let int = '-'? digit+ ('#' ['a'-'z' 'A'-'Z' '0'-'9']+)?
 let exp = ['e' 'E'] ['-' '+']? digit+
 let float = digit+ '.' digit+ exp?
 let white = [' ' '\t']+

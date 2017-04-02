@@ -166,7 +166,7 @@ and try_catch_after = {
 and try_clause = {
   try_clause_exn : (t * token) option;
   try_clause_exp : t;
-  try_clause_guard : explist;
+  try_clause_guard : explist option;
   try_clause_body : explist;
 }
 

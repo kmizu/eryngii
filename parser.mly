@@ -79,12 +79,15 @@ let paren open_ value close =
 %token <Ast.token> TRY              (* "try" *)
 %token EOF
 
+(*
 %nonassoc shift
-
+%nonassoc CATCH
 %right LIST_ADD LIST_DIFF
 %left PLUS MINUS
 %nonassoc SEMI
 %nonassoc NSIGN
+%nonassoc COLON
+*)
 
 %start <Ast.t option> prog
 
@@ -212,7 +215,7 @@ compare_op:
 
 list_conc_exp:
   | shift_exp list_conc_op list_conc_exp { create_binexp $1 $2 $3 }
-  | shift_exp %prec shift { $1 }
+  | shift_exp { $1 }
 
 list_conc_op:
   | LIST_ADD { locate $1 @@ Ast.Op_list_add }
@@ -244,8 +247,8 @@ mul_op:
   | LAND { locate $1 @@ Ast.Op_land }
 
 prefix_exp:
-  | prefix_op primary_exp { less @@ Ast.Unexp ($1, $2) }
-  | primary_exp { $1 }
+  | prefix_op record_exp { less @@ Ast.Unexp ($1, $2) }
+  | record_exp { $1 }
 
 prefix_op:
   | PLUS { locate $1 @@ Ast.Op_pos }
@@ -254,28 +257,41 @@ prefix_op:
   | LNOT { locate $1 @@ Ast.Op_lnot }
 
 record_exp:
-  | record_prefix_opt NSIGN LIDENT DOT LIDENT
+  | record_exp NSIGN LIDENT DOT LIDENT
   { less @@ Ast.Field {
-      field_exp = $1;
+      field_exp = Some $1;
       field_sharp = $2;
       field_rname = $3;
       field_sep = $4;
       field_fname = $5; }
   }
-  | record_prefix_opt NSIGN LIDENT LBRACE record_field_updates_opt RBRACE
+  | NSIGN LIDENT DOT LIDENT
+  { less @@ Ast.Field {
+      field_exp = None;
+      field_sharp = $1;
+      field_rname = $2;
+      field_sep = $3;
+      field_fname = $4; }
+  }
+  | record_exp NSIGN LIDENT LBRACE record_field_updates_opt RBRACE
   { less @@ Ast.Update {
-      update_exp = $1;
+      update_exp = Some $1;
       update_sharp = $2;
       update_name = $3;
       update_open = $4;
       update_assocs = $5;
       update_close = $6; }
   }
-  | call_exp { $1 }
-
-record_prefix_opt:
-  | exp { Some $1 }
-  | (* empty *) { None }
+  | NSIGN LIDENT LBRACE record_field_updates_opt RBRACE
+  { less @@ Ast.Update {
+      update_exp = None;
+      update_sharp = $1;
+      update_name = $2;
+      update_open = $3;
+      update_assocs = $4;
+      update_close = $5; }
+  }
+  | app_exp { $1 }
 
 record_field_updates_opt:
   | record_field_updates { $1 }
@@ -296,7 +312,7 @@ record_field_update:
         assoc_sep = $2; }
   }
 
-call_exp:
+app_exp:
   | primary_exp LPAREN exps_opt RPAREN
   { less @@ Ast.Call {
       call_fname = Ast.simple_fun_name $1;
@@ -324,12 +340,12 @@ primary_exp:
   | tuple_skel { $1 }
   | list_skel { $1 }
   | list_compr { $1 }
+  | block_exp { $1 }
   | if_exp { $1 }
   | case_exp { $1 }
   | receive_exp { $1 }
   | fun_exp { $1 }
   | try_exp { $1 }
-  | block_exp { $1 }
   | LPAREN exp RPAREN { paren $1 $2 $3 }
 
 var:
@@ -598,15 +614,27 @@ rev_try_clauses:
   { Seplist.cons $3 ~sep:$2 $1 }
 
 try_clause:
-  | exp guard body
+  | primary_exp RARROW body
   { { Ast.try_clause_exn = None;
         try_clause_exp = $1;
-        try_clause_guard = $2;
+        try_clause_guard = None;
         try_clause_body = $3; }
   }
-  | atom_or_var COLON exp guard body
+  | primary_exp WHEN guard RARROW body
+  { { Ast.try_clause_exn = None;
+        try_clause_exp = $1;
+        try_clause_guard = Some $3;
+        try_clause_body = $5; }
+  }
+  | primary_exp COLON exp RARROW body
   { { Ast.try_clause_exn = Some ($1, $2);
         try_clause_exp = $3;
-        try_clause_guard = $4;
+        try_clause_guard = None;
         try_clause_body = $5; }
+  }
+  | primary_exp COLON exp WHEN guard RARROW body
+  { { Ast.try_clause_exn = Some ($1, $2);
+        try_clause_exp = $3;
+        try_clause_guard = Some $5;
+        try_clause_body = $7; }
   }

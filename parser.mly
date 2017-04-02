@@ -72,6 +72,8 @@ let paren open_ value close =
 %token <Ast.token> LIST_DIFF        (* "--" *)
 %token <Ast.token> RARROW           (* "->" *)
 %token <Ast.token> LARROW           (* "<-" *)
+%token <Ast.token> DLT              (* ">>" *)
+%token <Ast.token> DGT              (* "<<" *)
 %token <Ast.token> BEGIN            (* "begin" *)
 %token <Ast.token> END              (* "end" *)
 %token <Ast.token> AFTER            (* "after" *)
@@ -343,6 +345,7 @@ app_exp:
 primary_exp:
   | var { $1 }
   | atomic { $1 }
+  | bitstring { $1 }
   | tuple_skel { $1 }
   | list_skel { $1 }
   | list_compr { $1 }
@@ -379,6 +382,55 @@ integer:
 
 float:
   | FLOAT { create $1.loc (Ast.Float $1) }
+
+bitstring:
+  | DGT DLT { less @@ Ast.(Bitstr (enclose $1 Seplist.empty $2)) }
+  | DGT bitstring_elts DLT
+  { less @@ Ast.(Bitstr (enclose $1 $2 $3)) }
+
+bitstring_elts:
+  | rev_bitstring_elts { Seplist.rev $1 }
+
+rev_bitstring_elts:
+  | bitstring_elt { Seplist.one $1 }
+  | rev_bitstring_elts COMMA bitstring_elt { Seplist.cons $3 ~sep:$2 $1 }
+
+bitstring_elt:
+  | bitstring_value
+  { less @@ Ast.(Bitstr_elt {
+      bitstr_elt_val = $1;
+      bitstr_elt_colon = None;
+      bitstr_elt_size = None;
+      bitstr_elt_slash = None;
+      bitstr_elt_type = None; })
+  }
+  | bitstring_value COLON INT
+  { less @@ Ast.(Bitstr_elt {
+      bitstr_elt_val = $1;
+      bitstr_elt_colon = Some $2;
+      bitstr_elt_size = Some $3;
+      bitstr_elt_slash = None;
+      bitstr_elt_type = None; })
+  }
+  | bitstring_value COLON INT DIV bitstring_elt
+  { less @@ Ast.(Bitstr_elt {
+      bitstr_elt_val = $1;
+      bitstr_elt_colon = Some $2;
+      bitstr_elt_size = Some $3;
+      bitstr_elt_slash = Some $4;
+      bitstr_elt_type = Some $5; })
+  }
+  | bitstring_value DIV bitstring_elt
+  { less @@ Ast.(Bitstr_elt {
+      bitstr_elt_val = $1;
+      bitstr_elt_colon = None;
+      bitstr_elt_size = None;
+      bitstr_elt_slash = Some $2;
+      bitstr_elt_type = Some $3; })
+  }
+
+bitstring_value:
+  | primary_exp { $1 }
 
 tuple_skel:
   | LBRACE exps_opt RBRACE

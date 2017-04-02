@@ -82,6 +82,8 @@ rule read =
   | "--"    { LIST_DIFF (to_loc lexbuf) }
   | "->"    { RARROW (to_loc lexbuf) }
   | "<-"    { LARROW (to_loc lexbuf) }
+  | ">>"    { DLT (to_loc lexbuf) }
+  | "<<"    { DGT (to_loc lexbuf) }
   | lower   { LIDENT (to_word lexbuf) }
   | upper   { UIDENT (to_word lexbuf) }
   | module_attr { MODULE_ATTR (to_word lexbuf) }

@@ -66,6 +66,8 @@ and desc =
   | Int of text
   | Float of text
   | List of erl_list
+  | Bitstr of explist enclosed
+  | Bitstr_elt of bitstr_elt
   | Tuple of explist enclosed
   | Field of field
   | Update of update
@@ -260,6 +262,14 @@ and map_assoc = {
   map_assoc_key : t;
   map_assoc_val : t;
   map_assoc_sep : [`Put | `Update] Located.t;
+}
+
+and bitstr_elt = {
+  bitstr_elt_val : t;
+  bitstr_elt_colon : token option;
+  bitstr_elt_size : text option;
+  bitstr_elt_slash : token option;
+  bitstr_elt_type : t option;
 }
 
 and text = string Located.t

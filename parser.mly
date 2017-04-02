@@ -79,6 +79,13 @@ let paren open_ value close =
 %token <Ast.token> TRY              (* "try" *)
 %token EOF
 
+%nonassoc shift
+
+%right LIST_ADD LIST_DIFF
+%left PLUS MINUS
+%nonassoc SEMI
+%nonassoc NSIGN
+
 %start <Ast.t option> prog
 
 %%
@@ -179,7 +186,7 @@ exp:
   | match_exp { $1 }
 
 match_exp:
-  | exp MATCH match_exp
+  | pattern MATCH match_exp
   { create_binexp $1 (locate $2 Ast.Op_match) $3 }
   | send_exp { $1 }
 
@@ -205,7 +212,7 @@ compare_op:
 
 list_conc_exp:
   | shift_exp list_conc_op list_conc_exp { create_binexp $1 $2 $3 }
-  | shift_exp { $1 }
+  | shift_exp %prec shift { $1 }
 
 list_conc_op:
   | LIST_ADD { locate $1 @@ Ast.Op_list_add }
@@ -483,8 +490,9 @@ patterns_opt:
   | patterns { $1 }
   | (* empty *) { Seplist.empty }
 
+(* TODO *)
 pattern:
-  | exp { $1 }
+  | atom { $1 }
 
 receive_exp:
   | RECEIVE cr_clauses END

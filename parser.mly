@@ -23,6 +23,12 @@ let paren open_ value close =
 %token <Ast.text> STRING
 %token <Ast.text> INT
 %token <Ast.text> FLOAT
+%token <Ast.text> MODULE_ATTR      (* "-module" *)
+%token <Ast.text> EXPORT_ATTR      (* "-export" *)
+%token <Ast.text> IMPORT_ATTR      (* "-import" *)
+%token <Ast.text> INCLUDE_ATTR     (* "-include" *)
+%token <Ast.text> SPEC_ATTR        (* "-spec" *)
+%token <Ast.text> DEFINE_ATTR      (* "-define" *)
 %token <Ast.token> LPAREN
 %token <Ast.token> RPAREN
 %token <Ast.token> LBRACK

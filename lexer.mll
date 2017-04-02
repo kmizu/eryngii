@@ -45,6 +45,12 @@ let white = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
 let lower = ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 let upper = [ 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
+let attr_prefix = '-' white*
+let module_attr = attr_prefix "module"
+let export_attr = attr_prefix "export"
+let import_attr = attr_prefix "import"
+let include_attr = attr_prefix "include"
+let spec_attr = attr_prefix "spec"
 
 rule read =
   parse
@@ -78,6 +84,11 @@ rule read =
   | "<-"    { LARROW (to_loc lexbuf) }
   | lower   { LIDENT (to_word lexbuf) }
   | upper   { UIDENT (to_word lexbuf) }
+  | module_attr { MODULE_ATTR (to_word lexbuf) }
+  | export_attr { EXPORT_ATTR (to_word lexbuf) }
+  | import_attr { IMPORT_ATTR (to_word lexbuf) }
+  | include_attr { INCLUDE_ATTR (to_word lexbuf) }
+  | spec_attr { SPEC_ATTR (to_word lexbuf) }
   | _       { raise (Syntax_error (start_pos lexbuf, "Unexpected char: " ^ Lexing.lexeme lexbuf)) }
   | eof     { EOF }
 

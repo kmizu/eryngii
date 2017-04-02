@@ -514,7 +514,11 @@ patterns_opt:
 
 (* TODO *)
 pattern:
-  | atom { $1 }
+  | atomic { $1 }
+  | var { $1 }
+  | tuple_skel { $1 }
+  | list_skel { $1 }
+  (*| record_pattern { $1 }*)
 
 receive_exp:
   | RECEIVE cr_clauses END

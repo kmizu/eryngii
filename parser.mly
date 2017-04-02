@@ -115,12 +115,12 @@ module_decls:
   }
 
 module_attr:
-  | MINUS LIDENT LPAREN exp RPAREN DOT
+  | MINUS LIDENT LPAREN exps RPAREN DOT
   { (less @@ Ast.Module_attr {
       module_attr_minus = $1;
       module_attr_tag = $2;
       module_attr_open = $3;
-      module_attr_value = $4;
+      module_attr_values = $4;
       module_attr_close = $5; }, $6)
   }
 

@@ -85,7 +85,7 @@ and module_attr = {
   module_attr_minus : token;
   module_attr_tag : text;
   module_attr_open : token;
-  module_attr_value : t;
+  module_attr_values : explist;
   module_attr_close : token;
 }
 

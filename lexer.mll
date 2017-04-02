@@ -44,7 +44,8 @@ let exp = ['e' 'E'] ['-' '+']? digit+
 let float = digit* frac? exp?
 let white = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
-let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
+let lower = ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
+let upper = [ 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
 rule read =
   parse
@@ -53,16 +54,31 @@ rule read =
   | int     { INT (to_word lexbuf) }
   | float   { FLOAT (to_word lexbuf) }
   | '"'     { STRING (strlit lexbuf read_string) } 
+  | '('     { LPAREN (to_loc lexbuf) }
+  | ')'     { RPAREN (to_loc lexbuf) }
   | '{'     { LBRACE (to_loc lexbuf) }
   | '}'     { RBRACE (to_loc lexbuf) }
   | '['     { LBRACK (to_loc lexbuf) }
   | ']'     { RBRACK (to_loc lexbuf) }
   | ':'     { COLON (to_loc lexbuf) }
+  | ';'     { SEMI (to_loc lexbuf) }
   | ','     { COMMA (to_loc lexbuf) }
+  | '.'     { DOT (to_loc lexbuf) }
+  | '#'     { NSIGN (to_loc lexbuf) }
   | '+'     { PLUS (to_loc lexbuf) }
   | '-'     { MINUS (to_loc lexbuf) }
   | '*'     { MUL (to_loc lexbuf) }
   | '/'     { DIV (to_loc lexbuf) }
+  | '_'     { USCORE (to_loc lexbuf) }
+  | '='     { MATCH (to_loc lexbuf) }
+  | '!'     { SEND (to_loc lexbuf) }
+  | '|'     { BAR (to_loc lexbuf) }
+  | "++"    { LIST_ADD (to_loc lexbuf) }
+  | "--"    { LIST_DIFF (to_loc lexbuf) }
+  | "->"    { RARROW (to_loc lexbuf) }
+  | "<-"    { LARROW (to_loc lexbuf) }
+  | lower   { LIDENT (to_word lexbuf) }
+  | upper   { UIDENT (to_word lexbuf) }
   | _       { raise (Syntax_error (start_pos lexbuf, "Unexpected char: " ^ Lexing.lexeme lexbuf)) }
   | eof     { EOF }
 

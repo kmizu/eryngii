@@ -53,9 +53,7 @@ and op_desc =
   | Op_lshift           (* "bsl" *)
   | Op_rshift           (* "bsr" *)
 
-type t = desc Located.t
-
-and desc =
+type t =
   | Nop (* internal use *)
   | Module of module_
   | Module_attr of module_attr
@@ -331,5 +329,3 @@ let enclose open_ desc close = {
   enc_desc = desc;
   enc_close = close;
 }
-
-let nop = Located.create None Nop

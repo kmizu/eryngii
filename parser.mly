@@ -2,18 +2,14 @@
 
 open Located
 
-let create_binexp left op right =
-  let open Located in
-  match (left.loc, right.loc) with
-  | (Some lloc, Some rloc) ->
-    Located.with_range lloc rloc Ast.(Binexp {
-        binexp_left = left;
-        binexp_op = op;
-        binexp_right = right })
-  | _ -> failwith "not match"
+let binexp left op right =
+  Ast.Binexp {
+      binexp_left = left;
+      binexp_op = op;
+      binexp_right = right }
 
 let paren open_ value close =
-  Located.with_range open_ close @@ Ast.Paren (Ast.enclose open_ value close)
+  Ast.Paren (Ast.enclose open_ value close)
 
 %}
 
@@ -112,17 +108,17 @@ module_:
 
 module_decls:
   | module_attr+ EOF
-  { less @@ Ast.Module {
+  { Ast.Module {
       module_attrs = $1;
       module_decls = []; }
   }
   | module_attr+ fun_decl+ EOF
-  { less @@ Ast.Module {
+  { Ast.Module {
       module_attrs = $1;
       module_decls = $2; }
   }
   | fun_decl+ EOF
-  { less @@ Ast.Module {
+  { Ast.Module {
       module_attrs = [];
       module_decls = $1; }
   }
@@ -130,7 +126,7 @@ module_decls:
 module_attr:
   | spec_attr { $1 }
   | MINUS LIDENT LPAREN exps RPAREN DOT
-  { less @@ Ast.Module_attr {
+  { Ast.Module_attr {
       module_attr_minus = $1;
       module_attr_tag = $2;
       module_attr_open = $3;
@@ -141,7 +137,7 @@ module_attr:
 
 spec_attr:
   | SPEC_ATTR LIDENT spec_clauses DOT
-  { less @@ Ast.(Spec_attr {
+  { Ast.(Spec_attr {
       spec_attr_tag = $1;
       spec_attr_mname = None;
       spec_attr_fname = $2;
@@ -149,7 +145,7 @@ spec_attr:
       spec_attr_dot = $4; })
   }
   | SPEC_ATTR LIDENT COLON LIDENT spec_clauses DOT
-  { less @@ Ast.(Spec_attr {
+  { Ast.(Spec_attr {
       spec_attr_tag = $1;
       spec_attr_mname = Some ($2, $3);
       spec_attr_fname = $4;
@@ -242,7 +238,7 @@ spec_fun_body:
 
 fun_decl:
   | fun_clauses DOT
-  { less @@ Ast.Fun_decl {
+  { Ast.Fun_decl {
       fun_decl_body = $1;
       fun_decl_dot = $2 }
   }
@@ -301,22 +297,21 @@ exps_opt:
   | (* empty *) { Seplist.empty }
 
 exp:
-  | CATCH exp { less @@ Ast.Catch ($1, $2) }
+  | CATCH exp { Ast.Catch ($1, $2) }
   | match_exp { $1 }
 
 match_exp:
   | pattern MATCH match_exp
-  { create_binexp $1 (locate $2 Ast.Op_match) $3 }
+  { binexp $1 (locate $2 Ast.Op_match) $3 }
   | send_exp { $1 }
 
 send_exp:
   | compare_exp SEND send_exp
-  { create_binexp $1 (locate $2 Ast.Op_send) $3 }
+  { binexp $1 (locate $2 Ast.Op_send) $3 }
   | compare_exp { $1 }
 
 compare_exp:
-  | list_conc_exp compare_op list_conc_exp
-  { create_binexp $1 $2 $3 }
+  | list_conc_exp compare_op list_conc_exp { binexp $1 $2 $3 }
   | list_conc_exp { $1 }
 
 compare_op:
@@ -330,51 +325,51 @@ compare_op:
   | LE { locate $1 Ast.Op_le }
 
 list_conc_exp:
-  | shift_exp list_conc_op list_conc_exp { create_binexp $1 $2 $3 }
+  | shift_exp list_conc_op list_conc_exp { binexp $1 $2 $3 }
   | shift_exp { $1 }
 
 list_conc_op:
-  | LIST_ADD { locate $1 @@ Ast.Op_list_add }
-  | LIST_DIFF { locate $1 @@ Ast.Op_list_diff }
+  | LIST_ADD { locate $1 Ast.Op_list_add }
+  | LIST_DIFF { locate $1 Ast.Op_list_diff }
 
 shift_exp:
-  | shift_exp shift_op mul_exp { create_binexp $1 $2 $3 }
+  | shift_exp shift_op mul_exp { binexp $1 $2 $3 }
   | mul_exp { $1 }
 
 shift_op:
-  | PLUS { locate $1 @@ Ast.Op_add }
-  | MINUS { locate $1 @@ Ast.Op_sub }
-  | LOR { locate $1 @@ Ast.Op_lor }
-  | LXOR { locate $1 @@ Ast.Op_lxor }
-  | LSHIFT { locate $1 @@ Ast.Op_lshift }
-  | RSHIFT { locate $1 @@ Ast.Op_rshift }
+  | PLUS { locate $1 Ast.Op_add }
+  | MINUS { locate $1 Ast.Op_sub }
+  | LOR { locate $1 Ast.Op_lor }
+  | LXOR { locate $1 Ast.Op_lxor }
+  | LSHIFT { locate $1 Ast.Op_lshift }
+  | RSHIFT { locate $1 Ast.Op_rshift }
 
 mul_exp:
-  | mul_exp mul_op prefix_exp { create_binexp $1 $2 $3 }
+  | mul_exp mul_op prefix_exp { binexp $1 $2 $3 }
   | mul_exp AND prefix_exp
-  { create_binexp $1 (locate $2 @@ Ast.Op_and) $3 }
+  { binexp $1 (locate $2 Ast.Op_and) $3 }
   | prefix_exp { $1 }
 
 mul_op:
-  | MUL { locate $1 @@ Ast.Op_mul }
-  | DIV { locate $1 @@ Ast.Op_div }
-  | QUO { locate $1 @@ Ast.Op_quo }
-  | REM { locate $1 @@ Ast.Op_rem }
-  | LAND { locate $1 @@ Ast.Op_land }
+  | MUL { locate $1 Ast.Op_mul }
+  | DIV { locate $1 Ast.Op_div }
+  | QUO { locate $1 Ast.Op_quo }
+  | REM { locate $1 Ast.Op_rem }
+  | LAND { locate $1 Ast.Op_land }
 
 prefix_exp:
-  | prefix_op record_exp { less @@ Ast.Unexp ($1, $2) }
+  | prefix_op record_exp { Ast.Unexp ($1, $2) }
   | record_exp { $1 }
 
 prefix_op:
-  | PLUS { locate $1 @@ Ast.Op_pos }
-  | MINUS { locate $1 @@ Ast.Op_neg }
-  | NOT { locate $1 @@ Ast.Op_not }
-  | LNOT { locate $1 @@ Ast.Op_lnot }
+  | PLUS { locate $1 Ast.Op_pos }
+  | MINUS { locate $1 Ast.Op_neg }
+  | NOT { locate $1 Ast.Op_not }
+  | LNOT { locate $1 Ast.Op_lnot }
 
 record_exp:
   | record_exp NSIGN LIDENT DOT LIDENT
-  { less @@ Ast.Field {
+  { Ast.Field {
       field_exp = Some $1;
       field_sharp = $2;
       field_rname = $3;
@@ -382,7 +377,7 @@ record_exp:
       field_fname = $5; }
   }
   | NSIGN LIDENT DOT LIDENT
-  { less @@ Ast.Field {
+  { Ast.Field {
       field_exp = None;
       field_sharp = $1;
       field_rname = $2;
@@ -390,7 +385,7 @@ record_exp:
       field_fname = $4; }
   }
   | record_exp NSIGN LIDENT LBRACE record_field_updates_opt RBRACE
-  { less @@ Ast.Update {
+  { Ast.Update {
       update_exp = Some $1;
       update_sharp = $2;
       update_name = $3;
@@ -399,7 +394,7 @@ record_exp:
       update_close = $6; }
   }
   | NSIGN LIDENT LBRACE record_field_updates_opt RBRACE
-  { less @@ Ast.Update {
+  { Ast.Update {
       update_exp = None;
       update_sharp = $1;
       update_name = $2;
@@ -430,7 +425,7 @@ record_field_update:
 
 app_exp:
   | primary_exp LPAREN exps_opt RPAREN
-  { less @@ Ast.Call {
+  { Ast.Call {
       call_fname = Ast.simple_fun_name $1;
       call_open = $2;
       call_args = $3;
@@ -442,7 +437,7 @@ app_exp:
       fun_name_colon = Some $2;
       fun_name_fname = $3; }
     in
-    less @@ Ast.Call {
+    Ast.Call {
       call_fname = fname;
       call_open = $4;
       call_args = $5;
@@ -467,8 +462,8 @@ primary_exp:
   | LPAREN exp RPAREN { paren $1 $2 $3 }
 
 var:
-  | UIDENT { create $1.loc (Ast.Var $1) }
-  | USCORE { locate $1 Ast.Uscore }
+  | UIDENT { Ast.Var $1 }
+  | USCORE { Ast.Uscore }
 
 atomic:
   | atom { $1 }
@@ -478,25 +473,25 @@ atomic:
   | float { $1 }
 
 atom:
-  | LIDENT { create $1.loc (Ast.Atom $1) }
+  | LIDENT { (Ast.Atom $1) }
 
 char:
-  | CHAR { create $1.loc (Ast.Char $1) }
+  | CHAR { (Ast.Char $1) }
 
 string:
-  | STRING { create $1.loc (Ast.String $1) }
+  | STRING { (Ast.String $1) }
 
 integer:
-  | INT { create $1.loc (Ast.Int $1) }
+  | INT { (Ast.Int $1) }
 
 float:
-  | FLOAT { create $1.loc (Ast.Float $1) }
+  | FLOAT { (Ast.Float $1) }
 
 binary:
   | DGT DLT
-  { less @@ Ast.(Binary (enclose $1 Seplist.empty $2)) }
+  { Ast.(Binary (enclose $1 Seplist.empty $2)) }
   | DGT binary_elts DLT
-  { less @@ Ast.(Binary (enclose $1 $2 $3)) }
+  { Ast.(Binary (enclose $1 $2 $3)) }
 
 binary_elts:
   | rev_binary_elts { Seplist.rev $1 }
@@ -507,7 +502,7 @@ rev_binary_elts:
 
 binary_elt:
   | binary_value
-  { less @@ Ast.(Binary_elt {
+  { Ast.(Binary_elt {
       bin_elt_val = $1;
       bin_elt_colon = None;
       bin_elt_size = None;
@@ -515,7 +510,7 @@ binary_elt:
       bin_elt_type = None; })
   }
   | binary_value COLON INT
-  { less @@ Ast.(Binary_elt {
+  { Ast.(Binary_elt {
       bin_elt_val = $1;
       bin_elt_colon = Some $2;
       bin_elt_size = Some $3;
@@ -523,7 +518,7 @@ binary_elt:
       bin_elt_type = None; })
   }
   | binary_value COLON INT DIV binary_elt
-  { less @@ Ast.(Binary_elt {
+  { Ast.(Binary_elt {
       bin_elt_val = $1;
       bin_elt_colon = Some $2;
       bin_elt_size = Some $3;
@@ -531,7 +526,7 @@ binary_elt:
       bin_elt_type = Some $5; })
   }
   | binary_value DIV binary_elt
-  { less @@ Ast.(Binary_elt {
+  { Ast.(Binary_elt {
       bin_elt_val = $1;
       bin_elt_colon = None;
       bin_elt_size = None;
@@ -544,7 +539,7 @@ binary_value:
 
 binary_compr:
   | DGT binary DBAR binary_compr_quals DLT
-  { less @@ Ast.Binary_compr {
+  { Ast.Binary_compr {
       compr_open = $1;
       compr_exp = $2;
       compr_sep = $3;
@@ -567,7 +562,7 @@ binary_compr_qual:
 
 binary_compr_gen:
   | pattern LARROW2 exp
-  { less @@ Ast.Binary_compr_gen {
+  { Ast.Binary_compr_gen {
       bin_gen_ptn = $1;
       bin_gen_arrow = $2;
       bin_gen_exp = $3 }
@@ -578,11 +573,11 @@ binary_compr_filter:
 
 tuple_skel:
   | LBRACE exps_opt RBRACE
-  { less Ast.(Tuple (enclose $1 $2 $3)) }
+  { Ast.(Tuple (enclose $1 $2 $3)) }
 
 list_skel:
   | LBRACK RBRACK
-  { less Ast.(List {
+  { Ast.(List {
       list_open = $1;
       list_head = Seplist.empty;
       list_bar = None;
@@ -590,7 +585,7 @@ list_skel:
       list_close = $2 })
   }
   | LBRACK exps RBRACK
-  { less Ast.(List {
+  { Ast.(List {
       list_open = $1;
       list_head = $2;
       list_bar = None;
@@ -598,7 +593,7 @@ list_skel:
       list_close = $3 })
   }
   | LBRACK exps BAR exp RBRACK
-  { less Ast.(List {
+  { Ast.(List {
       list_open = $1;
       list_head = $2;
       list_bar = Some $3;
@@ -608,7 +603,7 @@ list_skel:
 
 list_compr:
   | LBRACK exp DBAR list_compr_quals RBRACK
-  { less @@ Ast.List_compr {
+  { Ast.List_compr {
       compr_open = $1;
       compr_exp = $2;
       compr_sep = $3;
@@ -630,7 +625,7 @@ list_compr_qual:
 
 list_compr_gen:
   | pattern LARROW exp
-  { less @@ Ast.List_compr_gen {
+  { Ast.List_compr_gen {
       gen_ptn = $1;
       gen_arrow = $2;
       gen_exp = $3 }
@@ -641,11 +636,11 @@ list_compr_filter:
 
 block_exp:
   | BEGIN body END
-  { less @@ Ast.(Block (enclose $1 $2 $3)) }
+  { Ast.(Block (enclose $1 $2 $3)) }
 
 if_exp:
   | IF if_clauses END
-  { less (Ast.If {
+  { (Ast.If {
       if_begin = $1;
       if_clauses = $2;
       if_end = $3 })
@@ -667,7 +662,7 @@ if_clause:
 
 case_exp:
   | CASE exp OF cr_clauses END
-  { less (Ast.Case {
+  { (Ast.Case {
       case_begin = $1;
       case_exp = $2;
       case_of = $3;
@@ -719,14 +714,14 @@ pattern:
 
 receive_exp:
   | RECEIVE cr_clauses END
-  { less @@ Ast.Recv {
+  { Ast.Recv {
       recv_begin = $1;
       recv_clauses = $2;
       recv_after = None;
       recv_end = $3; }
   }
   | RECEIVE AFTER exp RARROW body END
-  { less @@ Ast.Recv {
+  { Ast.Recv {
       recv_begin = $1;
       recv_clauses = Seplist.empty;
       recv_after = Some {
@@ -738,7 +733,7 @@ receive_exp:
       recv_end = $6; }
   }
   | RECEIVE cr_clauses AFTER exp RARROW body END
-  { less @@ Ast.Recv {
+  { Ast.Recv {
       recv_begin = $1;
       recv_clauses = $2;
       recv_after = Some {
@@ -752,7 +747,7 @@ receive_exp:
 
 fun_exp:
   | FUN atom COLON atom_or_var DIV integer_or_var
-  { less @@ Ast.Module_fun {
+  { Ast.Module_fun {
       module_fun_prefix = $1;
       module_fun_mname = Some $2;
       module_fun_colon = Some $3;
@@ -761,7 +756,7 @@ fun_exp:
       module_fun_arity = $6; }
   }
   | FUN atom DIV integer_or_var
-  { less @@ Ast.Module_fun {
+  { Ast.Module_fun {
       module_fun_prefix = $1;
       module_fun_mname = None;
       module_fun_colon = None;
@@ -770,7 +765,7 @@ fun_exp:
       module_fun_arity = $4; }
   }
   | FUN fun_clauses END
-  { less @@ Ast.Anon_fun {
+  { Ast.Anon_fun {
       anon_fun_begin = $1;
       anon_fun_body = $2;
       anon_fun_end = $3; }
@@ -785,8 +780,8 @@ integer_or_var:
   | var { $1 }
 
 try_exp:
-  | TRY exps OF cr_clauses try_catch { Ast.nop }
-  | TRY exps try_catch { Ast.nop }
+  | TRY exps OF cr_clauses try_catch { Ast.Nop }
+  | TRY exps try_catch { Ast.Nop }
 
 try_catch:
   | CATCH try_clauses END

@@ -92,6 +92,7 @@ type t =
   | Binary_compr of compr (* binary comprehension *)
   | Binary_compr_gen of binary_compr_gen
   | Map of map
+  | Macro of macro
 
 and module_ = {
   module_attrs : t list;
@@ -314,6 +315,11 @@ and binary_elt = {
   bin_elt_size : text option;
   bin_elt_slash : token option;
   bin_elt_type : t option;
+}
+
+and macro = {
+  macro_q : token;
+  macro_name : text;
 }
 
 and 'a enclosed = {

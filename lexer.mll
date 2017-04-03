@@ -84,6 +84,7 @@ rule read =
   | '_'     { USCORE (to_loc lexbuf) }
   | '='     { MATCH (to_loc lexbuf) }
   | '!'     { SEND (to_loc lexbuf) }
+  | '?'     { Q (to_loc lexbuf) }
   | '|'     { BAR (to_loc lexbuf) }
   | "||"    { DBAR (to_loc lexbuf) }
   | "++"    { LIST_ADD (to_loc lexbuf) }

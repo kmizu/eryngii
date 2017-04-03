@@ -49,6 +49,7 @@ let paren open_ value close =
 %token <Ast.token> RSHIFT           (* "bsr" *)
 %token <Ast.token> MATCH            (* "=" *)
 %token <Ast.token> SEND             (* "!" *)
+%token <Ast.token> Q                (* "?" *)
 %token <Ast.token> BAR              (* "|" *)
 %token <Ast.token> DBAR             (* "||" *)
 %token <Ast.token> EQ               (* "==" *)
@@ -446,6 +447,7 @@ app_exp:
   | primary_exp { $1 }
 
 primary_exp:
+  | macro { $1 }
   | var { $1 }
   | atomic { $1 }
   | binary { $1 }
@@ -460,6 +462,12 @@ primary_exp:
   | fun_exp { $1 }
   | try_exp { $1 }
   | LPAREN exp RPAREN { paren $1 $2 $3 }
+
+macro:
+  | Q UIDENT
+  { Ast.Macro { macro_q = $1; macro_name = $2 } }
+  | Q LIDENT
+  { Ast.Macro { macro_q = $1; macro_name = $2 } }
 
 var:
   | UIDENT { Ast.Var $1 }

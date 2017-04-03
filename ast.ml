@@ -19,13 +19,11 @@ let simple_fun_name name =
     fun_name_fname = name; }
 
 let write buf node =
-  (* TODO: location *)
-  let open Located in
-  match node.desc with
+  match node with
   | Module m ->
     Buffer.add_string buf "{\"type\"=\"module}"
   | _ -> () (* TODO *)
-  
+
 let to_string node =
   let buf = Buffer.create 16 in
   write buf node;

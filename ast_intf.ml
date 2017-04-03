@@ -1,5 +1,22 @@
 (* https://github.com/ignatov/intellij-erlang/blob/mter/grammars/erlang.bnf *)
 
+type token = Location.t
+
+type text = string Located.t
+
+module Spec_type = struct
+
+  type t =
+    | Atom of text
+    | Int of text
+    | Nil (* TODO *)
+    | Named (* TODO *)
+    | List of t
+    | Binary
+    | Fun (* TODO *)
+
+end
+
 type op = op_desc Located.t
 
 and op_desc =
@@ -96,17 +113,17 @@ and spec_attr = {
   spec_attr_tag : text;
   spec_attr_mname : (text * token) option;
   spec_attr_fname : text;
-  spec_attr_clauses : explist;
+  spec_attr_clauses : (spec_clause, token) Seplist.t;
   spec_attr_dot : token;
 }
 
 and spec_clause = {
   spec_clause_open : token;
-  spec_clause_args : explist option;
+  spec_clause_args : (Spec_type.t, token) Seplist.t option;
   spec_clause_close : token;
   spec_clause_arrow : token;
-  spec_clause_return : t;
-  spec_clause_guard : (token * t) option;
+  spec_clause_return : Spec_type.t;
+  spec_clause_guard : (token * explist) option;
 }
 
 and fun_decl = {
@@ -301,8 +318,6 @@ and binary_elt = {
   bin_elt_type : t option;
 }
 
-and text = string Located.t
-
 and 'a enclosed = {
   enc_open : token;
   enc_desc : 'a;
@@ -310,8 +325,6 @@ and 'a enclosed = {
 }
 
 and explist = (t, token) Seplist.t
-
-and token = Location.t
 
 let enclose open_ desc close = {
   enc_open = open_;

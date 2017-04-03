@@ -165,10 +165,42 @@ rev_spec_clauses:
   | rev_spec_clauses SEMI spec_clause { Seplist.cons $3 ~sep:$2 $1 }
 
 spec_clause:
-  | LPAREN RPAREN RARROW spec_type {}
-  | LPAREN RPAREN RARROW spec_type WHEN guard {}
-  | LPAREN spec_args RPAREN RARROW spec_type {}
-  | LPAREN spec_args RPAREN RARROW spec_type WHEN guard {}
+  | LPAREN RPAREN RARROW spec_type
+  { Ast.({
+      spec_clause_open = $1;
+      spec_clause_args = None;
+      spec_clause_close = $2;
+      spec_clause_arrow = $3;
+      spec_clause_return = $4;
+      spec_clause_guard = None; })
+  }
+  | LPAREN RPAREN RARROW spec_type WHEN guard
+  { Ast.({
+      spec_clause_open = $1;
+      spec_clause_args = None;
+      spec_clause_close = $2;
+      spec_clause_arrow = $3;
+      spec_clause_return = $4;
+      spec_clause_guard = Some ($5, $6); })
+  }
+  | LPAREN spec_args RPAREN RARROW spec_type
+  { Ast.({
+      spec_clause_open = $1;
+      spec_clause_args = Some $2;
+      spec_clause_close = $3;
+      spec_clause_arrow = $4;
+      spec_clause_return = $5;
+      spec_clause_guard = None; })
+  }
+  | LPAREN spec_args RPAREN RARROW spec_type WHEN guard
+  { Ast.({
+      spec_clause_open = $1;
+      spec_clause_args = Some $2;
+      spec_clause_close = $3;
+      spec_clause_arrow = $4;
+      spec_clause_return = $5;
+      spec_clause_guard = Some ($6, $7); })
+  }
 
 spec_args:
   | rev_spec_args { Seplist.rev $1 }
@@ -180,19 +212,21 @@ rev_spec_args:
 spec_arg:
   | spec_type { $1 }
 
+  (* TODO *)
 spec_type:
-  (*| atom { $1 }*)
-  | LIDENT LPAREN RPAREN { $1 }
-  | LIDENT LPAREN spec_type_args RPAREN { $1 }
-  | INT { $1 }
-  | LBRACK RBRACK { $1 }
-  | LBRACK spec_type RBRACK { $1 }
-  | DLT DGT {}
-  | DLT USCORE COLON INT DGT {}
-  | DLT USCORE COLON USCORE MUL INT DGT {}
-  | DLT USCORE COLON INT COMMA USCORE COLON USCORE MUL INT DGT {}
-  | FUN LPAREN RPAREN { $1 }
-  | FUN LPAREN spec_fun_body RPAREN { $1 }
+  | spec_type BAR spec_type { Ast.Spec_type.Nil }
+  | atom { Ast.Spec_type.Nil }
+  | LIDENT LPAREN RPAREN { Ast.Spec_type.Nil }
+  | LIDENT LPAREN spec_type_args RPAREN { Ast.Spec_type.Nil }
+  | INT { Ast.Spec_type.Int $1 }
+  | LBRACK RBRACK { Ast.Spec_type.Nil }
+  | LBRACK spec_type RBRACK { Ast.Spec_type.Nil }
+  | DLT DGT {Ast.Spec_type.Nil}
+  | DLT USCORE COLON INT DGT {Ast.Spec_type.Nil}
+  | DLT USCORE COLON USCORE MUL INT DGT {Ast.Spec_type.Nil}
+  | DLT USCORE COLON INT COMMA USCORE COLON USCORE MUL INT DGT {Ast.Spec_type.Nil}
+  | FUN LPAREN RPAREN { Ast.Spec_type.Nil }
+  | FUN LPAREN spec_fun_body RPAREN { Ast.Spec_type.Nil }
 
 spec_type_args:
   | rev_spec_type_args { Seplist.rev $1 }
@@ -202,9 +236,9 @@ rev_spec_type_args:
   | rev_spec_type_args COMMA spec_type { Seplist.cons $3 ~sep:$2 $1 }
 
 spec_fun_body:
-  | LPAREN RPAREN RARROW spec_type { $1 }
-  | LPAREN DOT3 RPAREN RARROW spec_type { $1 }
-  | LPAREN spec_args RPAREN RARROW spec_type { $1 }
+  | LPAREN RPAREN RARROW spec_type { () }
+  | LPAREN DOT3 RPAREN RARROW spec_type { () }
+  | LPAREN spec_args RPAREN RARROW spec_type { () }
 
 fun_decl:
   | fun_clauses DOT

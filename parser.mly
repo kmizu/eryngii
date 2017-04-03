@@ -36,7 +36,8 @@ let paren open_ value close =
 %token <Ast.token> LBRACE
 %token <Ast.token> RBRACE
 %token <Ast.token> COMMA
-%token <Ast.token> DOT
+%token <Ast.token> DOT              (* "." *)
+%token <Ast.token> DOT3             (* "..." *)
 %token <Ast.token> COLON
 %token <Ast.token> SEMI
 %token <Ast.token> USCORE           (* "_" *)
@@ -127,18 +128,90 @@ module_decls:
   }
 
 module_attr:
+  | spec_attr { $1 }
   | MINUS LIDENT LPAREN exps RPAREN DOT
-  { (less @@ Ast.Module_attr {
+  { less @@ Ast.Module_attr {
       module_attr_minus = $1;
       module_attr_tag = $2;
       module_attr_open = $3;
       module_attr_values = $4;
-      module_attr_close = $5; }, $6)
+      module_attr_close = $5;
+      module_attr_dot = $6 }
   }
+
+spec_attr:
+  | SPEC_ATTR LIDENT spec_clauses DOT
+  { less @@ Ast.(Spec_attr {
+      spec_attr_tag = $1;
+      spec_attr_mname = None;
+      spec_attr_fname = $2;
+      spec_attr_clauses = $3;
+      spec_attr_dot = $4; })
+  }
+  | SPEC_ATTR LIDENT COLON LIDENT spec_clauses DOT
+  { less @@ Ast.(Spec_attr {
+      spec_attr_tag = $1;
+      spec_attr_mname = Some ($2, $3);
+      spec_attr_fname = $4;
+      spec_attr_clauses = $5;
+      spec_attr_dot = $6; })
+  }
+
+spec_clauses:
+  | rev_spec_clauses { Seplist.rev $1 }
+
+rev_spec_clauses:
+  | spec_clause { Seplist.one $1 }
+  | rev_spec_clauses SEMI spec_clause { Seplist.cons $3 ~sep:$2 $1 }
+
+spec_clause:
+  | LPAREN RPAREN RARROW spec_type {}
+  | LPAREN RPAREN RARROW spec_type WHEN guard {}
+  | LPAREN spec_args RPAREN RARROW spec_type {}
+  | LPAREN spec_args RPAREN RARROW spec_type WHEN guard {}
+
+spec_args:
+  | rev_spec_args { Seplist.rev $1 }
+
+rev_spec_args:
+  | spec_arg { Seplist.one $1 }
+  | rev_spec_args SEMI spec_arg { Seplist.cons $3 ~sep:$2 $1 }
+
+spec_arg:
+  | spec_type { $1 }
+
+spec_type:
+  (*| atom { $1 }*)
+  | LIDENT LPAREN RPAREN { $1 }
+  | LIDENT LPAREN spec_type_args RPAREN { $1 }
+  | INT { $1 }
+  | LBRACK RBRACK { $1 }
+  | LBRACK spec_type RBRACK { $1 }
+  | DLT DGT {}
+  | DLT USCORE COLON INT DGT {}
+  | DLT USCORE COLON USCORE MUL INT DGT {}
+  | DLT USCORE COLON INT COMMA USCORE COLON USCORE MUL INT DGT {}
+  | FUN LPAREN RPAREN { $1 }
+  | FUN LPAREN spec_fun_body RPAREN { $1 }
+
+spec_type_args:
+  | rev_spec_type_args { Seplist.rev $1 }
+
+rev_spec_type_args:
+  | spec_type { Seplist.one $1 }
+  | rev_spec_type_args COMMA spec_type { Seplist.cons $3 ~sep:$2 $1 }
+
+spec_fun_body:
+  | LPAREN RPAREN RARROW spec_type { $1 }
+  | LPAREN DOT3 RPAREN RARROW spec_type { $1 }
+  | LPAREN spec_args RPAREN RARROW spec_type { $1 }
 
 fun_decl:
   | fun_clauses DOT
-  { (less @@ Ast.Fun_decl $1, $2) }
+  { less @@ Ast.Fun_decl {
+      fun_decl_body = $1;
+      fun_decl_dot = $2 }
+  }
 
 fun_clauses:
   | fun_clause { Seplist.one $1 }

@@ -42,7 +42,8 @@ and desc =
   | Nop (* internal use *)
   | Module of module_
   | Module_attr of module_attr
-  | Fun_decl of fun_body
+  | Spec_attr of spec_attr
+  | Fun_decl of fun_decl
   | Catch of token * t
   | Block of explist enclosed
   | If of if_
@@ -78,11 +79,9 @@ and desc =
   | Map of map
 
 and module_ = {
-  module_attrs : stat list;
-  module_decls : stat list;
+  module_attrs : t list;
+  module_decls : t list;
 }
-
-and stat = t * token
 
 and module_attr = {
   module_attr_minus : token;
@@ -90,6 +89,29 @@ and module_attr = {
   module_attr_open : token;
   module_attr_values : explist;
   module_attr_close : token;
+  module_attr_dot : token;
+}
+
+and spec_attr = {
+  spec_attr_tag : text;
+  spec_attr_mname : (text * token) option;
+  spec_attr_fname : text;
+  spec_attr_clauses : explist;
+  spec_attr_dot : token;
+}
+
+and spec_clause = {
+  spec_clause_open : token;
+  spec_clause_args : explist option;
+  spec_clause_close : token;
+  spec_clause_arrow : token;
+  spec_clause_return : t;
+  spec_clause_guard : (token * t) option;
+}
+
+and fun_decl = {
+  fun_decl_body : fun_body;
+  fun_decl_dot : token;
 }
 
 and fun_body = (fun_clause, token) Seplist.t

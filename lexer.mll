@@ -45,6 +45,7 @@ let white = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
 let lower = ['a'-'z'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 let upper = [ 'A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
+let char = '$' _
 let attr_prefix = '-' white*
 let module_attr = attr_prefix "module"
 let export_attr = attr_prefix "export"
@@ -56,6 +57,7 @@ rule read =
   parse
   | white   { read lexbuf }
   | newline { next_line lexbuf; read lexbuf }
+  | char    { CHAR (to_word lexbuf) }
   | int     { INT (to_word lexbuf) }
   | float   { FLOAT (to_word lexbuf) }
   | '"'     { STRING (strlit lexbuf read_string) } 
@@ -69,6 +71,10 @@ rule read =
   | ';'     { SEMI (to_loc lexbuf) }
   | ','     { COMMA (to_loc lexbuf) }
   | '.'     { DOT (to_loc lexbuf) }
+  | '<'     { LT (to_loc lexbuf) }
+  | '>'     { GT (to_loc lexbuf) }
+  | "=<"    { LE (to_loc lexbuf) }
+  | ">="    { GE (to_loc lexbuf) }
   | '#'     { NSIGN (to_loc lexbuf) }
   | '+'     { PLUS (to_loc lexbuf) }
   | '-'     { MINUS (to_loc lexbuf) }
@@ -78,12 +84,24 @@ rule read =
   | '='     { MATCH (to_loc lexbuf) }
   | '!'     { SEND (to_loc lexbuf) }
   | '|'     { BAR (to_loc lexbuf) }
+  | "||"    { DBAR (to_loc lexbuf) }
   | "++"    { LIST_ADD (to_loc lexbuf) }
   | "--"    { LIST_DIFF (to_loc lexbuf) }
   | "->"    { RARROW (to_loc lexbuf) }
   | "<-"    { LARROW (to_loc lexbuf) }
+  | "<="    { LARROW2 (to_loc lexbuf) }
   | ">>"    { DLT (to_loc lexbuf) }
   | "<<"    { DGT (to_loc lexbuf) }
+  | "after" { AFTER (to_loc lexbuf) }
+  | "begin" { BEGIN (to_loc lexbuf) }
+  | "case"  { CASE (to_loc lexbuf) }
+  | "catch" { CATCH (to_loc lexbuf) }
+  | "end"   { END (to_loc lexbuf) }
+  | "fun"   { FUN (to_loc lexbuf) }
+  | "if"    { IF (to_loc lexbuf) }
+  | "of"    { OF (to_loc lexbuf) }
+  | "receive" { RECEIVE (to_loc lexbuf) }
+  | "try"   { TRY (to_loc lexbuf) }
   | lower   { LIDENT (to_word lexbuf) }
   | upper   { UIDENT (to_word lexbuf) }
   | module_attr { MODULE_ATTR (to_word lexbuf) }

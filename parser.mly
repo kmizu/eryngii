@@ -54,16 +54,16 @@ let paren open_ value close =
 %token <Ast.token> SEND             (* "!" *)
 %token <Ast.token> BAR              (* "|" *)
 %token <Ast.token> DBAR             (* "||" *)
-%token <Ast.token> EQ
-%token <Ast.token> NE
-%token <Ast.token> XEQ
-%token <Ast.token> XNE
-%token <Ast.token> LT
-%token <Ast.token> LE
-%token <Ast.token> GT
-%token <Ast.token> GE
-%token <Ast.token> PLUS
-%token <Ast.token> MINUS
+%token <Ast.token> EQ               (* "==" *)
+%token <Ast.token> NE               (* "/=" *)
+%token <Ast.token> XEQ              (* "=:=" *)
+%token <Ast.token> XNE              (* "=/=" *)
+%token <Ast.token> LT               (* "<" *)
+%token <Ast.token> LE               (* "=<" *)
+%token <Ast.token> GT               (* ">" *)
+%token <Ast.token> GE               (* ">=" *)
+%token <Ast.token> PLUS             (* "+" *)
+%token <Ast.token> MINUS            (* "-" *)
 %token <Ast.token> MUL              (* "*" *)
 %token <Ast.token> DIV              (* "/" *)
 %token <Ast.token> QUO              (* "div" *)
@@ -72,19 +72,20 @@ let paren open_ value close =
 %token <Ast.token> LIST_DIFF        (* "--" *)
 %token <Ast.token> RARROW           (* "->" *)
 %token <Ast.token> LARROW           (* "<-" *)
+%token <Ast.token> LARROW2          (* "<=" *)
 %token <Ast.token> DLT              (* ">>" *)
 %token <Ast.token> DGT              (* "<<" *)
-%token <Ast.token> BEGIN            (* "begin" *)
-%token <Ast.token> END              (* "end" *)
 %token <Ast.token> AFTER            (* "after" *)
-%token <Ast.token> WHEN             (* "when" *)
-%token <Ast.token> OF               (* "of" *)
+%token <Ast.token> BEGIN            (* "begin" *)
 %token <Ast.token> CASE             (* "case" *)
-%token <Ast.token> FUN              (* "fun" *)
 %token <Ast.token> CATCH            (* "catch" *)
+%token <Ast.token> END              (* "end" *)
+%token <Ast.token> FUN              (* "fun" *)
 %token <Ast.token> IF               (* "if" *)
+%token <Ast.token> OF               (* "of" *)
 %token <Ast.token> RECEIVE          (* "receive" *)
 %token <Ast.token> TRY              (* "try" *)
+%token <Ast.token> WHEN             (* "when" *)
 %token EOF
 
 (*
@@ -345,7 +346,8 @@ app_exp:
 primary_exp:
   | var { $1 }
   | atomic { $1 }
-  | bitstring { $1 }
+  | binary { $1 }
+  | binary_compr { $1 }
   | tuple_skel { $1 }
   | list_skel { $1 }
   | list_compr { $1 }
@@ -383,54 +385,89 @@ integer:
 float:
   | FLOAT { create $1.loc (Ast.Float $1) }
 
-bitstring:
-  | DGT DLT { less @@ Ast.(Bitstr (enclose $1 Seplist.empty $2)) }
-  | DGT bitstring_elts DLT
-  { less @@ Ast.(Bitstr (enclose $1 $2 $3)) }
+binary:
+  | DGT DLT
+  { less @@ Ast.(Binary (enclose $1 Seplist.empty $2)) }
+  | DGT binary_elts DLT
+  { less @@ Ast.(Binary (enclose $1 $2 $3)) }
 
-bitstring_elts:
-  | rev_bitstring_elts { Seplist.rev $1 }
+binary_elts:
+  | rev_binary_elts { Seplist.rev $1 }
 
-rev_bitstring_elts:
-  | bitstring_elt { Seplist.one $1 }
-  | rev_bitstring_elts COMMA bitstring_elt { Seplist.cons $3 ~sep:$2 $1 }
+rev_binary_elts:
+  | binary_elt { Seplist.one $1 }
+  | rev_binary_elts COMMA binary_elt { Seplist.cons $3 ~sep:$2 $1 }
 
-bitstring_elt:
-  | bitstring_value
-  { less @@ Ast.(Bitstr_elt {
-      bitstr_elt_val = $1;
-      bitstr_elt_colon = None;
-      bitstr_elt_size = None;
-      bitstr_elt_slash = None;
-      bitstr_elt_type = None; })
+binary_elt:
+  | binary_value
+  { less @@ Ast.(Binary_elt {
+      bin_elt_val = $1;
+      bin_elt_colon = None;
+      bin_elt_size = None;
+      bin_elt_slash = None;
+      bin_elt_type = None; })
   }
-  | bitstring_value COLON INT
-  { less @@ Ast.(Bitstr_elt {
-      bitstr_elt_val = $1;
-      bitstr_elt_colon = Some $2;
-      bitstr_elt_size = Some $3;
-      bitstr_elt_slash = None;
-      bitstr_elt_type = None; })
+  | binary_value COLON INT
+  { less @@ Ast.(Binary_elt {
+      bin_elt_val = $1;
+      bin_elt_colon = Some $2;
+      bin_elt_size = Some $3;
+      bin_elt_slash = None;
+      bin_elt_type = None; })
   }
-  | bitstring_value COLON INT DIV bitstring_elt
-  { less @@ Ast.(Bitstr_elt {
-      bitstr_elt_val = $1;
-      bitstr_elt_colon = Some $2;
-      bitstr_elt_size = Some $3;
-      bitstr_elt_slash = Some $4;
-      bitstr_elt_type = Some $5; })
+  | binary_value COLON INT DIV binary_elt
+  { less @@ Ast.(Binary_elt {
+      bin_elt_val = $1;
+      bin_elt_colon = Some $2;
+      bin_elt_size = Some $3;
+      bin_elt_slash = Some $4;
+      bin_elt_type = Some $5; })
   }
-  | bitstring_value DIV bitstring_elt
-  { less @@ Ast.(Bitstr_elt {
-      bitstr_elt_val = $1;
-      bitstr_elt_colon = None;
-      bitstr_elt_size = None;
-      bitstr_elt_slash = Some $2;
-      bitstr_elt_type = Some $3; })
+  | binary_value DIV binary_elt
+  { less @@ Ast.(Binary_elt {
+      bin_elt_val = $1;
+      bin_elt_colon = None;
+      bin_elt_size = None;
+      bin_elt_slash = Some $2;
+      bin_elt_type = Some $3; })
   }
 
-bitstring_value:
+binary_value:
   | primary_exp { $1 }
+
+binary_compr:
+  | DGT binary DBAR binary_compr_quals DLT
+  { less @@ Ast.Binary_compr {
+      compr_open = $1;
+      compr_exp = $2;
+      compr_sep = $3;
+      compr_quals = $4;
+      compr_close = $5; }
+  }
+
+binary_compr_quals:
+  | rev_binary_compr_quals { Seplist.rev $1 }
+
+rev_binary_compr_quals:
+  | binary_compr_qual { Seplist.one $1 }
+  | rev_binary_compr_quals COMMA binary_compr_qual
+  { Seplist.cons $3 ~sep:$2 $1 }
+
+binary_compr_qual:
+  | list_compr_gen { $1 }
+  | binary_compr_gen { $1 }
+  | binary_compr_filter { $1 }
+
+binary_compr_gen:
+  | pattern LARROW2 exp
+  { less @@ Ast.Binary_compr_gen {
+      bin_gen_ptn = $1;
+      bin_gen_arrow = $2;
+      bin_gen_exp = $3 }
+  }
+
+binary_compr_filter:
+  | exp { $1 }
 
 tuple_skel:
   | LBRACE exps_opt RBRACE
@@ -570,6 +607,7 @@ pattern:
   | var { $1 }
   | tuple_skel { $1 }
   | list_skel { $1 }
+  | binary { $1 }
   (*| record_pattern { $1 }*)
 
 receive_exp:

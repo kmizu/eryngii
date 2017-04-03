@@ -66,15 +66,16 @@ and desc =
   | Int of text
   | Float of text
   | List of erl_list
-  | Bitstr of explist enclosed
-  | Bitstr_elt of bitstr_elt
+  | Binary of explist enclosed
+  | Binary_elt of binary_elt
   | Tuple of explist enclosed
   | Field of field
   | Update of update
   | List_compr of compr (* list comprehension *)
   | List_compr_gen of list_compr_gen
+  | Binary_compr of compr (* binary comprehension *)
+  | Binary_compr_gen of binary_compr_gen
   | Map of map
-  | Bits_compr of compr (* bitstring comprehension *)
 
 and module_ = {
   module_attrs : stat list;
@@ -228,6 +229,12 @@ and list_compr_gen = {
   gen_exp : t;
 }
 
+and binary_compr_gen = {
+  bin_gen_ptn : t;
+  bin_gen_arrow : token;
+  bin_gen_exp : t;
+}
+
 and update = {
   update_exp : t option;
   update_sharp : token;
@@ -264,12 +271,12 @@ and map_assoc = {
   map_assoc_sep : [`Put | `Update] Located.t;
 }
 
-and bitstr_elt = {
-  bitstr_elt_val : t;
-  bitstr_elt_colon : token option;
-  bitstr_elt_size : text option;
-  bitstr_elt_slash : token option;
-  bitstr_elt_type : t option;
+and binary_elt = {
+  bin_elt_val : t;
+  bin_elt_colon : token option;
+  bin_elt_size : text option;
+  bin_elt_slash : token option;
+  bin_elt_type : t option;
 }
 
 and text = string Located.t

@@ -52,6 +52,7 @@ let module_attr = attr_prefix "module"
 let export_attr = attr_prefix "export"
 let import_attr = attr_prefix "import"
 let include_attr = attr_prefix "include"
+let inclib_attr = attr_prefix "include_lib"
 let spec_attr = attr_prefix "spec"
 let define_attr = attr_prefix "define"
 let comment = '%' [^'\r' '\n']*
@@ -120,6 +121,7 @@ rule read =
   | export_attr { EXPORT_ATTR (to_word lexbuf) }
   | import_attr { IMPORT_ATTR (to_word lexbuf) }
   | include_attr { INCLUDE_ATTR (to_word lexbuf) }
+  | inclib_attr { INCLIB_ATTR (to_word lexbuf) }
   | _       { raise (Syntax_error (start_pos lexbuf, "Unexpected char: " ^ Lexing.lexeme lexbuf)) }
   | eof     { EOF }
 

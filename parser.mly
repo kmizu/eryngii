@@ -24,6 +24,7 @@ let paren open_ value close =
 %token <Ast.text> EXPORT_ATTR      (* "-export" *)
 %token <Ast.text> IMPORT_ATTR      (* "-import" *)
 %token <Ast.text> INCLUDE_ATTR     (* "-include" *)
+%token <Ast.text> INCLIB_ATTR      (* "-include_lib" *)
 %token <Ast.text> SPEC_ATTR        (* "-spec" *)
 %token <Ast.text> DEFINE_ATTR      (* "-define" *)
 %token <Ast.token> LPAREN
@@ -121,6 +122,7 @@ module_attr:
   | modname_attr { $1 }
   | export_attr { $1 }
   | include_attr { $1 }
+  | include_lib_attr { $1 }
   | define_attr { $1 }
   | spec_attr { $1 }
   | MINUS LIDENT LPAREN exps RPAREN DOT
@@ -181,6 +183,17 @@ include_attr:
       include_attr_file = $3;
       include_attr_close = $4;
       include_attr_dot = $5;
+    }
+  }
+
+include_lib_attr:
+  | INCLIB_ATTR LPAREN STRING RPAREN DOT
+  { Ast.Inclib_attr {
+      inclib_attr_tag = $1;
+      inclib_attr_open = $2;
+      inclib_attr_file = $3;
+      inclib_attr_close = $4;
+      inclib_attr_dot = $5;
     }
   }
 

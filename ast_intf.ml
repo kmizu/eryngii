@@ -60,6 +60,7 @@ type t =
   | Modname_attr of modname_attr
   | Export_attr of export_attr
   | Include_attr of include_attr
+  | Inclib_attr of inclib_attr
   | Spec_attr of spec_attr
   | Def_attr of def_attr
   | Fun_decl of fun_decl
@@ -141,6 +142,14 @@ and include_attr = {
   include_attr_file: text;
   include_attr_close : token;
   include_attr_dot : token;
+}
+
+and inclib_attr = {
+  inclib_attr_tag : text;
+  inclib_attr_open : token;
+  inclib_attr_file: text;
+  inclib_attr_close : token;
+  inclib_attr_dot : token;
 }
 
 and spec_attr = {

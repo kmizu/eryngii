@@ -96,6 +96,8 @@ let paren open_ value close =
 %nonassoc COLON
 *)
 
+%left BAR
+
 %start <Ast.t option> prog
 
 %%

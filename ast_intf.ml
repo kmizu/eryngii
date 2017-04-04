@@ -59,6 +59,7 @@ type t =
   | Module_attr of module_attr
   | Modname_attr of modname_attr
   | Export_attr of export_attr
+  | Import_attr of import_attr
   | Include_attr of include_attr
   | Inclib_attr of inclib_attr
   | Spec_attr of spec_attr
@@ -124,16 +125,28 @@ and export_attr = {
   export_attr_tag : text;
   export_attr_open : token;
   export_attr_fun_open : token;
-  export_attr_funs : (export_fun, token) Seplist.t;
+  export_attr_funs : (fun_sig, token) Seplist.t;
   export_attr_fun_close : token;
   export_attr_close : token;
   export_attr_dot : token;
 }
 
-and export_fun = {
-  export_fun_name : text;
-  export_fun_sep : token;
-  export_fun_arity : text;
+and import_attr = {
+  import_attr_tag : text;
+  import_attr_open : token;
+  import_attr_module : text;
+  import_attr_comma : token;
+  import_attr_fun_open : token;
+  import_attr_funs : (fun_sig, token) Seplist.t;
+  import_attr_fun_close : token;
+  import_attr_close : token;
+  import_attr_dot : token;
+}
+
+and fun_sig = {
+  fun_sig_name : text;
+  fun_sig_sep : token;
+  fun_sig_arity : text;
 }
 
 and include_attr = {

@@ -121,6 +121,7 @@ module_decl:
 module_attr:
   | modname_attr { $1 }
   | export_attr { $1 }
+  | import_attr { $1 }
   | include_attr { $1 }
   | include_lib_attr { $1 }
   | define_attr { $1 }
@@ -147,7 +148,7 @@ modname_attr:
   }
 
 export_attr:
-  | EXPORT_ATTR LPAREN LBRACK export_funs RBRACK RPAREN DOT
+  | EXPORT_ATTR LPAREN LBRACK fun_sigs RBRACK RPAREN DOT
   { Ast.Export_attr {
       export_attr_tag = $1;
       export_attr_open = $2;
@@ -159,19 +160,34 @@ export_attr:
     }
   }
 
-export_funs:
-  | rev_export_funs { Seplist.rev $1 }
+fun_sigs:
+  | rev_fun_sigs { Seplist.rev $1 }
 
-rev_export_funs:
-  | export_fun { Seplist.one $1 }
-  | rev_export_funs COMMA export_fun { Seplist.cons $3 ~sep:$2 $1 }
+rev_fun_sigs:
+  | fun_sig { Seplist.one $1 }
+  | rev_fun_sigs COMMA fun_sig { Seplist.cons $3 ~sep:$2 $1 }
 
-export_fun:
+fun_sig:
   | LIDENT DIV INT
   { {
-      Ast.export_fun_name = $1;
-      export_fun_sep = $2;
-      export_fun_arity = $3;
+      Ast.fun_sig_name = $1;
+      fun_sig_sep = $2;
+      fun_sig_arity = $3;
+    }
+  }
+
+import_attr:
+  | IMPORT_ATTR LPAREN LIDENT COMMA LBRACK fun_sigs RBRACK RPAREN DOT
+  { Ast.Import_attr {
+      import_attr_tag = $1;
+      import_attr_open = $2;
+      import_attr_module = $3;
+      import_attr_comma = $4;
+      import_attr_fun_open = $5;
+      import_attr_funs = $6;
+      import_attr_fun_close = $7;
+      import_attr_close = $8;
+      import_attr_dot = $9;
     }
   }
 

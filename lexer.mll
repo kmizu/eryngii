@@ -107,6 +107,7 @@ rule read =
   | "of"    { OF (to_loc lexbuf) }
   | "receive" { RECEIVE (to_loc lexbuf) }
   | "try"   { TRY (to_loc lexbuf) }
+  | "when"  { WHEN (to_loc lexbuf) }
   | lower   { LIDENT (to_word lexbuf) }
   | upper   { UIDENT (to_word lexbuf) }
   | uscore  { USCORE (to_word lexbuf) }

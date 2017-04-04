@@ -218,7 +218,7 @@ spec_args:
 
 rev_spec_args:
   | spec_arg { Seplist.one $1 }
-  | rev_spec_args SEMI spec_arg { Seplist.cons $3 ~sep:$2 $1 }
+  | rev_spec_args COMMA spec_arg { Seplist.cons $3 ~sep:$2 $1 }
 
 spec_arg:
   | spec_type { $1 }

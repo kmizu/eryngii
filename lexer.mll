@@ -77,6 +77,10 @@ rule read =
   | ','     { COMMA (to_loc lexbuf) }
   | '.'     { DOT (to_loc lexbuf) }
   | "..."   { DOT3 (to_loc lexbuf) }
+  | "=="    { EQQ (to_loc lexbuf) }
+  | "/="    { NE (to_loc lexbuf) }
+  | "=:="   { XEQ (to_loc lexbuf) }
+  | "=/="   { XNE (to_loc lexbuf) }
   | '<'     { LT (to_loc lexbuf) }
   | '>'     { GT (to_loc lexbuf) }
   | "=<"    { LE (to_loc lexbuf) }

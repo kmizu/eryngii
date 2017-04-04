@@ -68,7 +68,7 @@ type t =
   | Def_attr of def_attr
   | Fun_decl of fun_decl
   | Catch of token * t
-  | Block of explist enclosed
+  | Block of exp_list enclosed
   | If of if_
   | Case of case
   | Recv of recv
@@ -90,9 +90,9 @@ type t =
   | Int of text
   | Float of text
   | List of erl_list
-  | Binary of explist enclosed
+  | Binary of exp_list enclosed
   | Binary_elt of binary_elt
-  | Tuple of explist enclosed
+  | Tuple of exp_list enclosed
   | Field of field
   | Update of update
   | List_compr of compr (* list comprehension *)
@@ -110,7 +110,7 @@ and module_attr = {
   module_attr_minus : token;
   module_attr_tag : text;
   module_attr_open : token;
-  module_attr_values : explist;
+  module_attr_values : exp_list;
   module_attr_close : token;
   module_attr_dot : token;
 }
@@ -181,7 +181,7 @@ and spec_clause = {
   spec_clause_close : token;
   spec_clause_arrow : token;
   spec_clause_return : Spec_type.t;
-  spec_clause_guard : (token * explist) option;
+  spec_clause_guard : (token * exp_list) option;
 }
 
 and def_attr = {
@@ -204,12 +204,12 @@ and fun_body = fun_clause node_list
 and fun_clause = {
   fun_clause_name : text option;
   fun_clause_open : token;
-  fun_clause_ptns : explist;
+  fun_clause_ptns : exp_list;
   fun_clause_close : token;
   fun_clause_when : token option;
-  fun_clause_guard : explist option;
+  fun_clause_guard : exp_list option;
   fun_clause_arrow : token;
-  fun_clause_body : explist;
+  fun_clause_body : exp_list;
 }
 
 and if_ = {
@@ -219,9 +219,9 @@ and if_ = {
 }
 
 and if_clause = {
-  if_clause_guard : explist;
+  if_clause_guard : exp_list;
   if_clause_arrow : token;
-  if_clause_body : explist;
+  if_clause_body : exp_list;
 }
 
 and case = {
@@ -235,9 +235,9 @@ and case = {
 and cr_clause = {
   cr_clause_ptn : t;
   cr_clause_when : token option;
-  cr_clause_guard : explist;
+  cr_clause_guard : exp_list;
   cr_clause_arrow : token;
-  cr_clause_body : explist;
+  cr_clause_body : exp_list;
 }
 
 and recv = {
@@ -251,7 +251,7 @@ and recv_after = {
   recv_after_begin : token;
   recv_after_timer : t;
   recv_after_arrow : token;
-  recv_after_body : explist;
+  recv_after_body : exp_list;
 }
 
 and try_ = {
@@ -270,14 +270,14 @@ and try_catch = {
 
 and try_catch_after = {
   try_catch_after_begin : token;
-  try_catch_after_exps : explist;
+  try_catch_after_exps : exp_list;
 }
 
 and try_clause = {
   try_clause_exn : (t * token) option;
   try_clause_exp : t;
-  try_clause_guard : explist option;
-  try_clause_body : explist;
+  try_clause_guard : exp_list option;
+  try_clause_body : exp_list;
 }
 
 and anon_fun = {
@@ -304,7 +304,7 @@ and fun_name = {
 and call = {
   call_fname : fun_name;
   call_open : token;
-  call_args : explist;
+  call_args : exp_list;
   call_close : token;
 }
 
@@ -316,7 +316,7 @@ and binexp = {
 
 and erl_list = {
   list_open : token;
-  list_head : explist;
+  list_head : exp_list;
   list_bar : token option;
   list_tail : t option;
   list_close : token;
@@ -326,7 +326,7 @@ and compr = {
   compr_open : token;
   compr_exp : t;
   compr_sep : token;
-  compr_quals : explist;
+  compr_quals : exp_list;
   compr_close : token;
 }
 
@@ -397,7 +397,7 @@ and 'a enclosed = {
   enc_close : token;
 }
 
-and explist = t node_list
+and exp_list = t node_list
 
 let enclose open_ desc close = {
   enc_open = open_;

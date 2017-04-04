@@ -48,12 +48,12 @@ let paren open_ value close =
 %token <Ast.token> LNOT             (* "bnot" *)
 %token <Ast.token> LSHIFT           (* "bsl" *)
 %token <Ast.token> RSHIFT           (* "bsr" *)
-%token <Ast.token> MATCH            (* "=" *)
-%token <Ast.token> SEND             (* "!" *)
+%token <Ast.token> EQ               (* "=" *)
+%token <Ast.token> EP               (* "!" *)
 %token <Ast.token> Q                (* "?" *)
 %token <Ast.token> BAR              (* "|" *)
 %token <Ast.token> DBAR             (* "||" *)
-%token <Ast.token> EQ               (* "==" *)
+%token <Ast.token> EQQ              (* "==" *)
 %token <Ast.token> NE               (* "/=" *)
 %token <Ast.token> XEQ              (* "=:=" *)
 %token <Ast.token> XNE              (* "=/=" *)
@@ -393,12 +393,12 @@ exp:
   | match_exp { $1 }
 
 match_exp:
-  | pattern MATCH match_exp
+  | pattern EQ match_exp
   { binexp $1 (locate $2 Ast.Op_match) $3 }
   | send_exp { $1 }
 
 send_exp:
-  | compare_exp SEND send_exp
+  | compare_exp EP send_exp
   { binexp $1 (locate $2 Ast.Op_send) $3 }
   | compare_exp { $1 }
 
@@ -407,7 +407,7 @@ compare_exp:
   | list_conc_exp { $1 }
 
 compare_op:
-  | EQ { locate $1 Ast.Op_eq }
+  | EQQ { locate $1 Ast.Op_eq }
   | NE { locate $1 Ast.Op_ne }
   | XEQ { locate $1 Ast.Op_xeq }
   | XNE { locate $1 Ast.Op_xne }
@@ -509,7 +509,7 @@ rev_record_field_updates:
   { Seplist.cons $3 ~sep:$2 $1 }
 
 record_field_update:
-  | LIDENT MATCH exp
+  | LIDENT EQ exp
   { { Ast.assoc_key = $1;
         assoc_val = $3;
         assoc_sep = $2; }

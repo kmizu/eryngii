@@ -86,8 +86,8 @@ rule read =
   | '-'     { MINUS (to_loc lexbuf) }
   | '*'     { MUL (to_loc lexbuf) }
   | '/'     { DIV (to_loc lexbuf) }
-  | '='     { MATCH (to_loc lexbuf) }
-  | '!'     { SEND (to_loc lexbuf) }
+  | '='     { EQ (to_loc lexbuf) }
+  | '!'     { EP (to_loc lexbuf) }
   | '?'     { Q (to_loc lexbuf) }
   | '|'     { BAR (to_loc lexbuf) }
   | "||"    { DBAR (to_loc lexbuf) }

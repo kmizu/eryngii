@@ -49,8 +49,14 @@ let command =
              match parse_file file with
              | Some node -> printf "%s" (Ast.to_string node)
              | None -> printf "fail parse"
-           else
-             () (* TODO *)
+           else begin
+             (* format *)
+             match parse_file file with
+             | None -> printf "fail parse"
+             | Some node ->
+               let fmt = Formatter.format node in
+               printf "%s\n" fmt
+           end
          | None ->
            Printf.printf "Error: No input files";
            exit 1

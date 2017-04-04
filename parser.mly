@@ -118,6 +118,9 @@ module_decl:
   | fun_decl { $1 }
 
 module_attr:
+  | modname_attr { $1 }
+  | export_attr { $1 }
+  | include_attr { $1 }
   | define_attr { $1 }
   | spec_attr { $1 }
   | MINUS LIDENT LPAREN exps RPAREN DOT
@@ -128,6 +131,57 @@ module_attr:
       module_attr_values = $4;
       module_attr_close = $5;
       module_attr_dot = $6 }
+  }
+
+modname_attr:
+  | MODULE_ATTR LPAREN LIDENT RPAREN DOT
+  { Ast.Modname_attr {
+      modname_attr_tag = $1;
+      modname_attr_open = $2;
+      modname_attr_name = $3;
+      modname_attr_close = $4;
+      modname_attr_dot = $5;
+    }
+  }
+
+export_attr:
+  | EXPORT_ATTR LPAREN LBRACK export_funs RBRACK RPAREN DOT
+  { Ast.Export_attr {
+      export_attr_tag = $1;
+      export_attr_open = $2;
+      export_attr_fun_open = $3;
+      export_attr_funs = $4;
+      export_attr_fun_close = $5;
+      export_attr_close = $6;
+      export_attr_dot = $7;
+    }
+  }
+
+export_funs:
+  | rev_export_funs { Seplist.rev $1 }
+
+rev_export_funs:
+  | export_fun { Seplist.one $1 }
+  | rev_export_funs COMMA export_fun { Seplist.cons $3 ~sep:$2 $1 }
+
+export_fun:
+  | LIDENT DIV INT
+  { {
+      Ast.export_fun_name = $1;
+      export_fun_sep = $2;
+      export_fun_arity = $3;
+    }
+  }
+
+include_attr:
+  | INCLUDE_ATTR LPAREN STRING RPAREN DOT
+  { Ast.Include_attr {
+      include_attr_tag = $1;
+      include_attr_open = $2;
+      include_attr_file = $3;
+      include_attr_close = $4;
+      include_attr_dot = $5;
+    }
   }
 
 define_attr:

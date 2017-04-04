@@ -117,6 +117,9 @@ rule read =
   | include_attr { INCLUDE_ATTR (to_word lexbuf) }
   | spec_attr { SPEC_ATTR (to_word lexbuf) }
   | define_attr { DEFINE_ATTR (to_word lexbuf) }
+  | export_attr { EXPORT_ATTR (to_word lexbuf) }
+  | import_attr { IMPORT_ATTR (to_word lexbuf) }
+  | include_attr { INCLUDE_ATTR (to_word lexbuf) }
   | _       { raise (Syntax_error (start_pos lexbuf, "Unexpected char: " ^ Lexing.lexeme lexbuf)) }
   | eof     { EOF }
 

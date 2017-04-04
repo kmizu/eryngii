@@ -57,6 +57,9 @@ type t =
   | Nop (* internal use *)
   | Module of module_
   | Module_attr of module_attr
+  | Modname_attr of modname_attr
+  | Export_attr of export_attr
+  | Include_attr of include_attr
   | Spec_attr of spec_attr
   | Def_attr of def_attr
   | Fun_decl of fun_decl
@@ -106,6 +109,38 @@ and module_attr = {
   module_attr_values : explist;
   module_attr_close : token;
   module_attr_dot : token;
+}
+
+and modname_attr = {
+  modname_attr_tag : text;
+  modname_attr_open : token;
+  modname_attr_name: text;
+  modname_attr_close : token;
+  modname_attr_dot : token;
+}
+
+and export_attr = {
+  export_attr_tag : text;
+  export_attr_open : token;
+  export_attr_fun_open : token;
+  export_attr_funs : (export_fun, token) Seplist.t;
+  export_attr_fun_close : token;
+  export_attr_close : token;
+  export_attr_dot : token;
+}
+
+and export_fun = {
+  export_fun_name : text;
+  export_fun_sep : token;
+  export_fun_arity : text;
+}
+
+and include_attr = {
+  include_attr_tag : text;
+  include_attr_open : token;
+  include_attr_file: text;
+  include_attr_close : token;
+  include_attr_dot : token;
 }
 
 and spec_attr = {

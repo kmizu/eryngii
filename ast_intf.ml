@@ -2,6 +2,8 @@
 
 type token = Location.t
 
+type 'a node_list = ('a, token) Seplist.t
+
 type text = string Located.t
 
 module Spec_type = struct
@@ -125,7 +127,7 @@ and export_attr = {
   export_attr_tag : text;
   export_attr_open : token;
   export_attr_fun_open : token;
-  export_attr_funs : (fun_sig, token) Seplist.t;
+  export_attr_funs : fun_sig node_list;
   export_attr_fun_close : token;
   export_attr_close : token;
   export_attr_dot : token;
@@ -137,7 +139,7 @@ and import_attr = {
   import_attr_module : text;
   import_attr_comma : token;
   import_attr_fun_open : token;
-  import_attr_funs : (fun_sig, token) Seplist.t;
+  import_attr_funs : fun_sig node_list;
   import_attr_fun_close : token;
   import_attr_close : token;
   import_attr_dot : token;
@@ -169,13 +171,13 @@ and spec_attr = {
   spec_attr_tag : text;
   spec_attr_mname : (text * token) option;
   spec_attr_fname : text;
-  spec_attr_clauses : (spec_clause, token) Seplist.t;
+  spec_attr_clauses : spec_clause node_list;
   spec_attr_dot : token;
 }
 
 and spec_clause = {
   spec_clause_open : token;
-  spec_clause_args : (Spec_type.t, token) Seplist.t option;
+  spec_clause_args : Spec_type.t node_list option;
   spec_clause_close : token;
   spec_clause_arrow : token;
   spec_clause_return : Spec_type.t;
@@ -197,7 +199,7 @@ and fun_decl = {
   fun_decl_dot : token;
 }
 
-and fun_body = (fun_clause, token) Seplist.t
+and fun_body = fun_clause node_list
 
 and fun_clause = {
   fun_clause_name : text option;
@@ -212,7 +214,7 @@ and fun_clause = {
 
 and if_ = {
   if_begin : token;
-  if_clauses : (if_clause, token) Seplist.t;
+  if_clauses : if_clause node_list;
   if_end : token;
 }
 
@@ -226,7 +228,7 @@ and case = {
   case_begin : token;
   case_exp : t;
   case_of : token;
-  case_clauses : (cr_clause, token) Seplist.t;
+  case_clauses : cr_clause node_list;
   case_end : token;
 }
 
@@ -240,7 +242,7 @@ and cr_clause = {
 
 and recv = {
   recv_begin : token;
-  recv_clauses : (cr_clause, token) Seplist.t;
+  recv_clauses : cr_clause node_list;
   recv_after : recv_after option;
   recv_end : token;
 }
@@ -255,13 +257,13 @@ and recv_after = {
 and try_ = {
   try_begin : token;
   try_of : token option;
-  try_clauses : (try_clause, token) Seplist.t option;
+  try_clauses : try_clause node_list option;
   try_catch : try_catch;
 }
 
 and try_catch = {
   try_catch_begin : token option;
-  try_catch_clauses : (try_clause, token) Seplist.t option;
+  try_catch_clauses : try_clause node_list option;
   try_catch_after : try_catch_after option;
   try_catch_end : token;
 }
@@ -345,7 +347,7 @@ and update = {
   update_sharp : token;
   update_name : text;
   update_open : token;
-  update_assocs : (assoc, token) Seplist.t;
+  update_assocs : assoc node_list;
   update_close : token;
 }
 
@@ -366,7 +368,7 @@ and field = {
 and map = {
   map_sharp : token;
   map_open : token;
-  map_assocs : (map_assoc, token) Seplist.t;
+  map_assocs : map_assoc node_list;
   map_close : token;
 }
 
@@ -395,7 +397,7 @@ and 'a enclosed = {
   enc_close : token;
 }
 
-and explist = (t, token) Seplist.t
+and explist = t node_list
 
 let enclose open_ desc close = {
   enc_open = open_;

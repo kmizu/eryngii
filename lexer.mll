@@ -52,11 +52,13 @@ let export_attr = attr_prefix "export"
 let import_attr = attr_prefix "import"
 let include_attr = attr_prefix "include"
 let spec_attr = attr_prefix "spec"
+let comment = '%' [^'\r' '\n']*
 
 rule read =
   parse
   | white   { read lexbuf }
   | newline { next_line lexbuf; read lexbuf }
+  | comment { read lexbuf }
   | char    { CHAR (to_word lexbuf) }
   | int     { INT (to_word lexbuf) }
   | float   { FLOAT (to_word lexbuf) }

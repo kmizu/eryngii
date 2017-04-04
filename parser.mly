@@ -263,6 +263,7 @@ fun_clauses:
   | fun_clauses SEMI fun_clause { Seplist.cons $3 ~sep:$2 $1 }
 
 fun_clause:
+  | fun_clause_def { $1 }
   | LIDENT fun_clause_def
   { { $2 with Ast.fun_clause_name = Some $1 } }
 

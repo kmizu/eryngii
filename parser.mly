@@ -394,12 +394,12 @@ exp:
 
 match_exp:
   | pattern EQ match_exp
-  { binexp $1 (locate $2 Ast.Op_match) $3 }
+  { binexp $1 (locate $2 Ast.Op_eq) $3 }
   | send_exp { $1 }
 
 send_exp:
   | compare_exp EP send_exp
-  { binexp $1 (locate $2 Ast.Op_send) $3 }
+  { binexp $1 (locate $2 Ast.Op_ep) $3 }
   | compare_exp { $1 }
 
 compare_exp:
@@ -407,7 +407,7 @@ compare_exp:
   | list_conc_exp { $1 }
 
 compare_op:
-  | EQQ { locate $1 Ast.Op_eq }
+  | EQQ { locate $1 Ast.Op_eqq }
   | NE { locate $1 Ast.Op_ne }
   | XEQ { locate $1 Ast.Op_xeq }
   | XNE { locate $1 Ast.Op_xne }

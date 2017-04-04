@@ -12,7 +12,7 @@ let rev es =
   let rec f es accu =
     match es with
     | Nil -> Nil
-    | Cons (e, Nil) -> Cons (e, Nil)
+    | Cons (e, Nil) -> Cons (e, accu)
     | Cons (_e, Cons (_sep, Nil)) -> failwith "error"
     | Cons (e, Cons (sep, es)) ->
       f es @@ Cons (sep, Cons (e, accu))

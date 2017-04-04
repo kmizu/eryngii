@@ -45,6 +45,7 @@ let white = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
 let lower = ['a'-'z'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 let upper = [ 'A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
+let uscore = '_' ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 let char = '$' _
 let attr_prefix = '-' white*
 let module_attr = attr_prefix "module"
@@ -84,7 +85,6 @@ rule read =
   | '-'     { MINUS (to_loc lexbuf) }
   | '*'     { MUL (to_loc lexbuf) }
   | '/'     { DIV (to_loc lexbuf) }
-  | '_'     { USCORE (to_loc lexbuf) }
   | '='     { MATCH (to_loc lexbuf) }
   | '!'     { SEND (to_loc lexbuf) }
   | '?'     { Q (to_loc lexbuf) }
@@ -109,6 +109,7 @@ rule read =
   | "try"   { TRY (to_loc lexbuf) }
   | lower   { LIDENT (to_word lexbuf) }
   | upper   { UIDENT (to_word lexbuf) }
+  | uscore  { USCORE (to_word lexbuf) }
   | module_attr { MODULE_ATTR (to_word lexbuf) }
   | export_attr { EXPORT_ATTR (to_word lexbuf) }
   | import_attr { IMPORT_ATTR (to_word lexbuf) }

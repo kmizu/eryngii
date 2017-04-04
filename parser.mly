@@ -15,6 +15,7 @@ let paren open_ value close =
 
 %token <Ast.text> UIDENT
 %token <Ast.text> LIDENT
+%token <Ast.text> USCORE           (* "_" *)
 %token <Ast.text> CHAR
 %token <Ast.text> STRING
 %token <Ast.text> INT
@@ -36,7 +37,6 @@ let paren open_ value close =
 %token <Ast.token> DOT3             (* "..." *)
 %token <Ast.token> COLON
 %token <Ast.token> SEMI
-%token <Ast.token> USCORE           (* "_" *)
 %token <Ast.token> NSIGN            (* "#" *)
 %token <Ast.token> AND              (* "and" *)
 %token <Ast.token> OR               (* "or" *)

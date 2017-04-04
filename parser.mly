@@ -105,24 +105,15 @@ prog:
 
 module_:
   | EOF { None }
-  | module_decls { Some $1 }
+  | module_decls EOF { Some $1 }
 
 module_decls:
-  | module_attr+ EOF
-  { Ast.Module {
-      module_attrs = $1;
-      module_decls = []; }
-  }
-  | module_attr+ fun_decl+ EOF
-  { Ast.Module {
-      module_attrs = $1;
-      module_decls = $2; }
-  }
-  | fun_decl+ EOF
-  { Ast.Module {
-      module_attrs = [];
-      module_decls = $1; }
-  }
+  | module_decl+
+  { Ast.Module { module_decls = $1 } }
+
+module_decl:
+  | module_attr { $1 }
+  | fun_decl { $1 }
 
 module_attr:
   | define_attr { $1 }

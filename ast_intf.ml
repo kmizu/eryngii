@@ -96,7 +96,6 @@ type t =
   | Macro of macro
 
 and module_ = {
-  module_attrs : t list;
   module_decls : t list;
 }
 

@@ -125,6 +125,7 @@ module_decls:
   }
 
 module_attr:
+  | define_attr { $1 }
   | spec_attr { $1 }
   | MINUS LIDENT LPAREN exps RPAREN DOT
   { Ast.Module_attr {
@@ -134,6 +135,19 @@ module_attr:
       module_attr_values = $4;
       module_attr_close = $5;
       module_attr_dot = $6 }
+  }
+
+define_attr:
+  | DEFINE_ATTR LPAREN exp COMMA exp RPAREN DOT
+  { Ast.Def_attr {
+      def_attr_tag = $1;
+      def_attr_open = $2;
+      def_attr_name = $3;
+      def_attr_comma = $4;
+      def_attr_value = $5;
+      def_attr_close = $6;
+      def_attr_dot = $7;
+    }
   }
 
 spec_attr:

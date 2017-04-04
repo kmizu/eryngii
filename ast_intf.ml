@@ -58,6 +58,7 @@ type t =
   | Module of module_
   | Module_attr of module_attr
   | Spec_attr of spec_attr
+  | Def_attr of def_attr
   | Fun_decl of fun_decl
   | Catch of token * t
   | Block of explist enclosed
@@ -123,6 +124,16 @@ and spec_clause = {
   spec_clause_arrow : token;
   spec_clause_return : Spec_type.t;
   spec_clause_guard : (token * explist) option;
+}
+
+and def_attr = {
+  def_attr_tag : text;
+  def_attr_open : token;
+  def_attr_name : t;
+  def_attr_comma : token;
+  def_attr_value : t;
+  def_attr_close : token;
+  def_attr_dot : token;
 }
 
 and fun_decl = {

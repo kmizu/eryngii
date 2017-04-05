@@ -76,15 +76,13 @@ module Context = struct
     newlines ctx ~n
 
   let indent ctx =
-    ctx.indent_lv <- ctx.indent_lv + 1;
-    newline ctx
+    ctx.indent_lv <- ctx.indent_lv + 1
 
   let indent_spaces ctx =
     spaces ctx @@ ctx.indent_lv * 4
 
   let dedent ctx =
-    ctx.indent_lv <- ctx.indent_lv - 1;
-    newline ctx
+    ctx.indent_lv <- ctx.indent_lv - 1
 
 end
 
@@ -152,18 +150,19 @@ let rec write ctx node =
     text ctx ") ";
     write_when_guard clause.fun_clause_when clause.fun_clause_guard;
     rarrow ctx;
-    indent ctx;
+    newline ctx;
     Seplist.iter clause.fun_clause_body ~f:(fun sep exp ->
         indent_spaces ctx;
         write ctx exp;
-        write_sep sep ",\n");
+        write_sep sep ",\n")
   in
 
   let write_fun_body body =
     Seplist.iter body
       ~f:(fun sep clause ->
           write_fun_clause clause;
-          write_sep sep ", ")
+          write_sep sep ";\n")
+  in
 
   let write_fun_name name =
     Option.iter name.fun_name_mname ~f:(write ctx);
@@ -230,8 +229,10 @@ let rec write ctx node =
     newline ctx
 
   | Fun_decl decl ->
+    indent ctx;
     write_fun_body decl.fun_decl_body;
-    dot_newline ctx;
+    text ctx ".";
+    newlines ctx;
     dedent ctx
 
   | Call call ->

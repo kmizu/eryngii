@@ -1,5 +1,14 @@
 open Core.Std
 
+module Comment = struct
+
+  type t = {
+    text : Ast.text;
+    mutable used : bool;
+  }
+
+end
+
 module Op = struct
 
   type t =
@@ -33,10 +42,20 @@ module Context = struct
     buf : Buffer.t;
     mutable ops : Op.t list;
     mutable indent_lv : int;
+    mutable comments : Comment.t list;
   }
 
   let create buf =
-    { buf; ops = []; indent_lv = 0 }
+    let comments = List.filter_map !Annot.all_annots
+        ~f:(fun annot ->
+            match annot with
+            | Comment text -> Some ({ Comment.text = text; used = false }))
+    in
+    { buf;
+      ops = [];
+      indent_lv = 0;
+      comments;
+    }
 
   let contents ctx =
     List.rev ctx.ops
@@ -85,6 +104,23 @@ module Context = struct
     ctx.indent_lv <- ctx.indent_lv - 1
 
 end
+
+let write_comment ctx pos =
+  let open Context in
+  let open Located in
+  let open Location in
+  let open Position in
+  let comments = List.filter ctx.comments
+      ~f:(fun com ->
+          let start = (Option.value_exn com.text.loc).start in
+          not com.used && start.line < pos.line
+        )
+  in
+  List.iter comments ~f:(fun com ->
+      com.used <- true;
+      text ctx com.text.desc;
+      newline ctx);
+  ()
 
 let rec write ctx node =
   let open Ast_intf in
@@ -204,6 +240,8 @@ let rec write ctx node =
     | Op_lshift -> "bsl"
     | Op_rshift -> "bsr"
   in
+
+  write_comment ctx (Ast.start_pos node);
 
   match node with
   | Module m -> iter m.module_decls

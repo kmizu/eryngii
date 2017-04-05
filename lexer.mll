@@ -51,7 +51,7 @@ rule read =
   parse
   | white   { read lexbuf }
   | newline { new_line lexbuf; read lexbuf }
-  | comment { read lexbuf }
+  | comment { Annot.add_comment (to_word lexbuf); read lexbuf }
   | char    { CHAR (to_word lexbuf) }
   | int     { INT (to_word lexbuf) }
   | float   { FLOAT (to_word lexbuf) }

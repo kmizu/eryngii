@@ -28,3 +28,18 @@ let to_string node =
   let buf = Buffer.create 16 in
   write buf node;
   Buffer.contents buf
+
+let rec start_pos node =
+  let open Located in
+  let open Location in
+  let of_text text =
+    (Option.value_exn text.loc).start
+  in
+  match node with
+  | Module m ->
+    begin match m.module_decls with
+      | [] -> m.module_eof.start
+      | hd :: _ -> start_pos hd
+    end
+  | Modname_attr attr -> of_text attr.modname_attr_tag
+  | _ -> failwith "notimpl"

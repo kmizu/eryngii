@@ -335,8 +335,11 @@ fun_decl:
   }
 
 fun_clauses:
+  | rev_fun_clauses { Seplist.rev $1 }
+
+rev_fun_clauses:
   | fun_clause { Seplist.one $1 }
-  | fun_clauses SEMI fun_clause { Seplist.cons $3 ~sep:$2 $1 }
+  | rev_fun_clauses SEMI fun_clause { Seplist.cons $3 ~sep:$2 $1 }
 
 fun_clause:
   | fun_clause_def { $1 }
@@ -796,7 +799,7 @@ patterns:
 
 rev_patterns:
   | pattern { Seplist.one $1 }
-  | patterns COMMA pattern { Seplist.cons $3 ~sep:$2 $1 }
+  | rev_patterns COMMA pattern { Seplist.cons $3 ~sep:$2 $1 }
 
 patterns_opt:
   | patterns { $1 }

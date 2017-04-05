@@ -2,24 +2,33 @@ open Core.Std
 
 module Op = struct
 
+  type newline =
+    | Export
+
   type t =
+    | Nop
     | Indent
     | Dedent
     | Comment of string
     | Text of string
     | Space of int
-    | Newline
+    | Newline of newline option
 
-  let write buf op =
+  let write buf ops =
     let open Buffer in
-    match op with
-    | Text s -> add_string buf s
-    | Space n ->
-      for i = 0 to n-1 do
-        add_string buf " "
-      done
-    | Newline -> add_string buf "\n"
-    | _ -> ()
+    ignore @@ List.fold_left ~init:Nop ops ~f:(fun prev op ->
+        begin match op with
+          | Text s -> add_string buf s
+          | Space n ->
+            for i = 0 to n-1 do
+              add_string buf " "
+            done
+          | Newline (Some tag) when op = prev -> ()
+          | Newline (Some tag) -> add_string buf "\n"
+          | Newline None -> add_string buf "\n"
+          | _ -> ()
+        end;
+        op)
 
 end
 
@@ -54,21 +63,21 @@ module Context = struct
   let spaces ctx n =
     add ctx @@ Op.Space n
 
-  let newline ctx =
-    add ctx Op.Newline
+  let newline ?tag ctx =
+    add ctx @@ Op.Newline tag
 
-  let newlines ctx n =
+  let newlines ?tag ?(n=2) ctx =
     for i = 1 to n do
-      add ctx Op.Newline
+      add ctx @@ Op.Newline tag
     done
 
   let dot_newline ctx =
     text ctx ".";
     newline ctx
 
-  let dot_newlines ctx n =
+  let dot_newlines ?(n=2) ctx =
     text ctx ".";
-    newlines ctx n
+    newlines ctx ~n
 
   let indent ctx =
     ctx.indent_lv <- ctx.indent_lv + 1;
@@ -164,13 +173,14 @@ let rec write ctx node =
     text ctx "-module(";
     text ctx attr.modname_attr_name.desc;
     text ctx ").";
-    newline ctx
+    newlines ctx
 
   | Export_attr attr ->
     text ctx "-export([";
     write_fun_sigs attr.export_attr_funs;
     text ctx "]).";
-    newline ctx
+    newline ctx;
+    newline ctx ~tag:Export
 
   | Import_attr attr ->
     text ctx "-import(";
@@ -178,11 +188,11 @@ let rec write ctx node =
     text ctx ", [";
     write_fun_sigs attr.import_attr_funs;
     text ctx "]).";
-    newline ctx
+    newlines ctx
 
   | Fun_decl decl ->
     write_fun_body decl.fun_decl_body;
-    dot_newlines ctx 2;
+    dot_newline ctx;
     dedent ctx
 
   | Binexp exp ->
@@ -217,6 +227,6 @@ let format node =
   let ctx = Context.create () in
   write ctx node;
   let buf = Buffer.create 2000 in
-  List.iter (Context.contents ctx) ~f:(Op.write buf);
+  Op.write buf @@ Context.contents ctx;
   Buffer.contents buf
 

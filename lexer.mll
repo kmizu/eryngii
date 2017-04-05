@@ -4,24 +4,14 @@ open Parser
 
 exception Syntax_error of Position.t * string
 
-let next_line lexbuf =
-  let pos = lexbuf.lex_curr_p in
-  lexbuf.lex_curr_p <-
-    { pos with pos_bol = lexbuf.lex_curr_pos;
-               pos_lnum = pos.pos_lnum + 1
-    }
-
-let revise_pos pos lexbuf =
-  Position.of_lexing_pos
-    { pos with pos_bol = pos.pos_cnum - lexbuf.lex_curr_p.pos_bol + 1 }
+let to_pos pos lexbuf =
+  Position.of_lexing_pos pos
 
 let start_pos lexbuf =
-  revise_pos (lexeme_start_p lexbuf) lexbuf
+  to_pos (lexeme_start_p lexbuf) lexbuf
 
 let end_pos lexbuf =
-  let p = lexeme_end_p lexbuf in
-  let p' = { p with pos_cnum = p.pos_cnum - 1 } in
-  revise_pos p' lexbuf
+  to_pos (lexeme_end_p lexbuf) lexbuf
 
 let to_loc lexbuf =
   Location.create (start_pos lexbuf) (end_pos lexbuf)
@@ -60,7 +50,7 @@ let comment = '%' [^'\r' '\n']*
 rule read =
   parse
   | white   { read lexbuf }
-  | newline { next_line lexbuf; read lexbuf }
+  | newline { new_line lexbuf; read lexbuf }
   | comment { read lexbuf }
   | char    { CHAR (to_word lexbuf) }
   | int     { INT (to_word lexbuf) }

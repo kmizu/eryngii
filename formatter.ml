@@ -160,6 +160,41 @@ let rec write ctx node =
       ~f:(fun sep clause ->
           write_fun_clause clause;
           write_sep sep ", ")
+
+  let write_op op =
+    text ctx @@ match op with
+    | Op_pos -> "+"
+    | Op_neg -> "-"
+    | Op_not -> "not"
+    | Op_lnot -> "bnot"
+    | Op_eq -> "="
+    | Op_ep -> "!"
+    | Op_eqq -> "=="
+    | Op_ne -> "/="
+    | Op_le -> "=<"
+    | Op_lt -> "<"
+    | Op_ge -> ">="
+    | Op_gt -> ">"
+    | Op_xeq -> "=:="
+    | Op_xne -> "=/="
+    | Op_list_add -> "++"
+    | Op_list_diff -> "--"
+    | Op_add -> "+"
+    | Op_sub -> "-"
+    | Op_mul -> "*"
+    | Op_div -> "/"
+    | Op_quo -> "div"
+    | Op_rem -> "rem"
+    | Op_and -> "and"
+    | Op_or -> "or"
+    | Op_xor -> "xor"
+    | Op_sand -> "andalso"
+    | Op_sor -> "orelse"
+    | Op_land -> "band"
+    | Op_lor -> "bor"
+    | Op_lxor -> "bxor"
+    | Op_lshift -> "bsl"
+    | Op_rshift -> "bsr"
   in
 
   match node with
@@ -192,12 +227,8 @@ let rec write ctx node =
 
   | Binexp exp ->
     write ctx exp.binexp_left;
-    let op = match exp.binexp_op.desc with
-      | Op_eq -> "="
-      | _ -> "_?"
-    in
     space ctx;
-    text ctx op;
+    write_op exp.binexp_op.desc;
     space ctx;
     write ctx exp.binexp_right
 

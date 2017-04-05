@@ -103,14 +103,26 @@ rule read =
   | ">>"    { DLT (to_loc lexbuf) }
   | "<<"    { DGT (to_loc lexbuf) }
   | "after" { AFTER (to_loc lexbuf) }
+  | "and"   { AND (to_loc lexbuf) }
+  | "andalso" { ANDALSO (to_loc lexbuf) }
+  | "band"  { LAND (to_loc lexbuf) }
   | "begin" { BEGIN (to_loc lexbuf) }
+  | "bnot"  { LNOT (to_loc lexbuf) }
+  | "bor"   { LOR (to_loc lexbuf) }
+  | "bxor"  { LXOR (to_loc lexbuf) }
   | "case"  { CASE (to_loc lexbuf) }
   | "catch" { CATCH (to_loc lexbuf) }
+  | "cond"  { COND (to_loc lexbuf) }
+  | "div"   { DIV (to_loc lexbuf) }
   | "end"   { END (to_loc lexbuf) }
   | "fun"   { FUN (to_loc lexbuf) }
   | "if"    { IF (to_loc lexbuf) }
+  | "let"   { LET (to_loc lexbuf) }
   | "of"    { OF (to_loc lexbuf) }
+  | "or"    { OR (to_loc lexbuf) }
+  | "oralse" { ORELSE (to_loc lexbuf) }
   | "receive" { RECEIVE (to_loc lexbuf) }
+  | "rem"   { REM (to_loc lexbuf) }
   | "try"   { TRY (to_loc lexbuf) }
   | "when"  { WHEN (to_loc lexbuf) }
   | lower   { LIDENT (to_word lexbuf) }

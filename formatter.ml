@@ -165,6 +165,11 @@ let rec write ctx node =
           write_fun_clause clause;
           write_sep sep ", ")
 
+  let write_fun_name name =
+    Option.iter name.fun_name_mname ~f:(write ctx);
+    write ctx name.fun_name_fname
+  in
+
   let write_op op =
     text ctx @@ match op with
     | Op_pos -> "+"
@@ -228,6 +233,12 @@ let rec write ctx node =
     write_fun_body decl.fun_decl_body;
     dot_newline ctx;
     dedent ctx
+
+  | Call call ->
+    write_fun_name call.call_fname;
+    text ctx "(";
+    write_exp_list call.call_args;
+    text ctx ")"
 
   | Binexp exp ->
     write ctx exp.binexp_left;

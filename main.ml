@@ -46,16 +46,13 @@ let command =
            if syntax then
              ignore @@ parse_file file
            else if debug_ast then
-             match parse_file file with
-             | Some node -> printf "%s" (Ast.to_string node)
-             | None -> printf "fail parse"
+             let node = parse_file file in
+             printf "%s" (Ast.to_string node)
            else begin
              (* format *)
-             match parse_file file with
-             | None -> printf "fail parse"
-             | Some node ->
-               let fmt = Formatter.format node in
-               printf "%s\n" fmt
+             let node = parse_file file in
+             let fmt = Formatter.format node in
+             printf "%s\n" fmt
            end
          | None ->
            Printf.printf "Error: No input files";

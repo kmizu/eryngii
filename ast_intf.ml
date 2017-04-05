@@ -104,6 +104,7 @@ type t =
 
 and module_ = {
   module_decls : t list;
+  module_eof : token;
 }
 
 and module_attr = {

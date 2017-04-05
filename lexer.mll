@@ -127,7 +127,7 @@ rule read =
   | include_attr { INCLUDE_ATTR (to_word lexbuf) }
   | inclib_attr { INCLIB_ATTR (to_word lexbuf) }
   | _       { raise (Syntax_error (start_pos lexbuf, "Unexpected char: " ^ Lexing.lexeme lexbuf)) }
-  | eof     { EOF }
+  | eof     { EOF (to_loc lexbuf) }
 
 and read_string buf =
   parse

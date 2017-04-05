@@ -23,7 +23,7 @@ let parse_file file =
         | Parser.Error ->
           let pos = Lexing.lexeme_start_p buf in
           printf "Line %d, column %d: Invalid syntax\n"
-            pos.pos_lnum (pos.pos_cnum+1);
+            pos.pos_lnum (pos.pos_cnum-pos.pos_bol+1);
           exit (-1)
         | e -> raise e)
 

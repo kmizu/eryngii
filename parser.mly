@@ -85,7 +85,7 @@ let paren open_ value close =
 %token <Ast.token> RECEIVE          (* "receive" *)
 %token <Ast.token> TRY              (* "try" *)
 %token <Ast.token> WHEN             (* "when" *)
-%token EOF
+%token <Ast.token> EOF
 
 (*
 %nonassoc shift

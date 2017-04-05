@@ -260,6 +260,14 @@ let rec write ctx node =
     write_exp_list tuple.enc_desc;
     text ctx "}"
 
+  | List list ->
+    text ctx "[";
+    write_exp_list list.list_head;
+    Option.iter list.list_tail ~f:(fun tail ->
+        text ctx " | ";
+        write ctx tail);
+    text ctx "]"
+
 (*
 
   | Module_attr of module_attr

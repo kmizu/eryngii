@@ -2,9 +2,6 @@ open Core.Std
 
 module Op = struct
 
-  type newline =
-    | Export
-
   type t =
     | Nop
     | Indent
@@ -12,7 +9,7 @@ module Op = struct
     | Comment of string
     | Text of string
     | Space of int
-    | Newline of newline option
+    | Newline
 
   let write buf ops =
     let open Buffer in
@@ -23,9 +20,7 @@ module Op = struct
             for i = 0 to n-1 do
               add_string buf " "
             done
-          | Newline (Some tag) when op = prev -> ()
-          | Newline (Some tag) -> add_string buf "\n"
-          | Newline None -> add_string buf "\n"
+          | Newline -> add_string buf "\n"
           | _ -> ()
         end;
         op)
@@ -35,12 +30,13 @@ end
 module Context = struct
 
   type t = {
+    buf : Buffer.t;
     mutable ops : Op.t list;
     mutable indent_lv : int;
   }
 
-  let create () =
-    { ops = []; indent_lv = 0 }
+  let create buf =
+    { buf; ops = []; indent_lv = 0 }
 
   let contents ctx =
     List.rev ctx.ops
@@ -63,12 +59,12 @@ module Context = struct
   let spaces ctx n =
     add ctx @@ Op.Space n
 
-  let newline ?tag ctx =
-    add ctx @@ Op.Newline tag
+  let newline ctx =
+    add ctx @@ Op.Newline
 
-  let newlines ?tag ?(n=2) ctx =
+  let newlines ?(n=2) ctx =
     for i = 1 to n do
-      add ctx @@ Op.Newline tag
+      add ctx @@ Op.Newline
     done
 
   let dot_newline ctx =
@@ -173,14 +169,13 @@ let rec write ctx node =
     text ctx "-module(";
     text ctx attr.modname_attr_name.desc;
     text ctx ").";
-    newlines ctx
+    newline ctx
 
   | Export_attr attr ->
     text ctx "-export([";
     write_fun_sigs attr.export_attr_funs;
     text ctx "]).";
-    newline ctx;
-    newline ctx ~tag:Export
+    newline ctx
 
   | Import_attr attr ->
     text ctx "-import(";
@@ -188,7 +183,7 @@ let rec write ctx node =
     text ctx ", [";
     write_fun_sigs attr.import_attr_funs;
     text ctx "]).";
-    newlines ctx
+    newline ctx
 
   | Fun_decl decl ->
     write_fun_body decl.fun_decl_body;
@@ -223,10 +218,80 @@ let rec write ctx node =
 *)
   | _ -> ()
 
+type formatted = {
+  fmt_mod_name: Ast.t list;
+  fmt_export : Ast.t list;
+  fmt_import : Ast.t list;
+  fmt_include : Ast.t list;
+  fmt_inclib : Ast.t list;
+  fmt_attrs : Ast.t list;
+  fmt_decls : Ast.t list;
+}
+
+let restruct_decls decls =
+  let open Ast in
+  List.fold_left
+    decls
+    ~init:{ fmt_mod_name = [];
+            fmt_export = [];
+            fmt_import = [];
+            fmt_include = [];
+            fmt_inclib = [];
+            fmt_attrs = [];
+            fmt_decls = [] }
+    ~f:(fun attrs decl ->
+        match decl with
+        | Module_attr attr ->
+          { attrs with fmt_attrs = decl :: attrs.fmt_attrs }
+        | Modname_attr attr ->
+          { attrs with fmt_mod_name = decl :: attrs.fmt_mod_name }
+        | Export_attr attr ->
+          { attrs with fmt_export = decl :: attrs.fmt_export }
+        | Import_attr attr ->
+          { attrs with fmt_import = decl :: attrs.fmt_import }
+        | Include_attr attr ->
+          { attrs with fmt_include = decl :: attrs.fmt_include }
+        | Inclib_attr attr ->
+          { attrs with fmt_inclib = decl :: attrs.fmt_inclib }
+        | _ -> { attrs with fmt_decls = decl :: attrs.fmt_decls })
+
+let restruct node =
+  let open Ast in
+  match node with
+  | Module m ->
+    let fmt = restruct_decls m.module_decls in
+    { fmt_mod_name = List.rev fmt.fmt_mod_name;
+      fmt_export = List.rev fmt.fmt_export;
+      fmt_import = List.rev fmt.fmt_import;
+      fmt_include = List.rev fmt.fmt_include;
+      fmt_inclib = List.rev fmt.fmt_inclib;
+      fmt_attrs = List.rev fmt.fmt_attrs;
+      fmt_decls = List.rev fmt.fmt_decls;
+    }
+  | _ -> failwith "must be module node"
+
 let format node =
-  let ctx = Context.create () in
-  write ctx node;
   let buf = Buffer.create 2000 in
+  let ctx = Context.create buf in
+  let fmt = restruct node in
+
+  let iter nodes =
+    List.iter nodes ~f:(write ctx)
+  in
+
+  let iterln nodes =
+    iter nodes;
+    if List.length nodes <> 0 then Context.newline ctx
+  in
+
+  iterln fmt.fmt_mod_name;
+  iterln fmt.fmt_export;
+  iterln fmt.fmt_import;
+  iterln fmt.fmt_include;
+  iterln fmt.fmt_inclib;
+  iterln fmt.fmt_attrs;
+  iterln fmt.fmt_decls;
+
   Op.write buf @@ Context.contents ctx;
   Buffer.contents buf
 

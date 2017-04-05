@@ -109,6 +109,10 @@ let rec write ctx node =
         write_sep sep_opt sep)
   in
 
+  let write_exp_list exp_list =
+    write_seplist exp_list ", "
+  in
+
   let write_when_guard w guard =
     match (w, guard) with
     | Some w, Some guard ->

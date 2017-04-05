@@ -255,6 +255,11 @@ let rec write ctx node =
   | Int value ->
     text ctx value.desc
 
+  | Tuple tuple ->
+    text ctx "{";
+    write_exp_list tuple.enc_desc;
+    text ctx "}"
+
 (*
 
   | Module_attr of module_attr

@@ -201,7 +201,8 @@ let rec write ctx node =
     space ctx;
     write ctx exp.binexp_right
 
-  | Var name ->
+  | Var name
+  | Uscore name ->
     text ctx name.desc
 
   | Atom value

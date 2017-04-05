@@ -81,7 +81,7 @@ type t =
   | Call of call
   | Qual of text * text (* atom '.' atom *)
   | Paren of t enclosed
-  | Uscore
+  | Uscore of text
   | Var of text
   | Atom of text
   | Q_atom of text enclosed

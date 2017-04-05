@@ -562,7 +562,7 @@ macro:
 
 var:
   | UIDENT { Ast.Var $1 }
-  | USCORE { Ast.Uscore }
+  | USCORE { Ast.Uscore $1 }
 
 atomic:
   | atom { $1 }

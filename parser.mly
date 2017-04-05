@@ -103,7 +103,7 @@ let paren open_ value close =
 
 %left BAR
 
-%start <Ast.t option> prog
+%start <Ast.t> prog
 
 %%
 
@@ -111,12 +111,10 @@ prog:
   | module_ { $1 }
 
 module_:
-  | EOF { None }
-  | module_decls EOF { Some $1 }
-
-module_decls:
-  | module_decl+
-  { Ast.Module { module_decls = $1 } }
+  | EOF
+  { Ast.Module { module_decls = []; module_eof = $1 } }
+  | module_decl+ EOF
+  { Ast.Module { module_decls = $1; module_eof = $2 } }
 
 module_decl:
   | module_attr { $1 }

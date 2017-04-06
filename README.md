@@ -1,2 +1,2 @@
 # eryngii
-Erlang lint
+Erlang lint and formatter

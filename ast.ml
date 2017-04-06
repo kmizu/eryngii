@@ -36,10 +36,11 @@ let rec start_pos node =
     (Option.value_exn text.loc).start
   in
   match node with
+  | Nop -> None
   | Module m ->
     begin match m.module_decls with
-      | [] -> m.module_eof.start
+      | [] -> Some m.module_eof.start
       | hd :: _ -> start_pos hd
     end
-  | Modname_attr attr -> of_text attr.modname_attr_tag
-  | _ -> failwith "notimpl"
+  | Modname_attr attr -> Some (of_text attr.modname_attr_tag)
+  | _ -> None (*failwith "notimpl"*)

@@ -241,7 +241,9 @@ let rec write ctx node =
     | Op_rshift -> "bsr"
   in
 
-  write_comment ctx (Ast.start_pos node);
+  (* write comments *)
+  let start_pos = Ast.start_pos node in
+  Option.iter start_pos ~f:(write_comment ctx);
 
   match node with
   | Module m -> iter m.module_decls

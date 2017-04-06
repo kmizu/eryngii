@@ -268,6 +268,54 @@ let rec write ctx node =
     text ctx "]).";
     newline ctx
 
+  | Def_attr attr ->
+    text ctx "-define(";
+    write ctx attr.def_attr_name;
+    text ctx ", ";
+    write ctx attr.def_attr_value;
+    text ctx ").";
+    newline ctx
+
+  | Spec_attr attr ->
+    let rec write_spec_type ty =
+      let open Spec_type in
+      match ty with
+      | Atom name -> text ctx name.desc
+      | Int value -> text ctx value.desc
+      | Nil -> text ctx "[]"
+      | List ty ->
+        text ctx "[";
+        write_spec_type ty;
+        text ctx "]";
+      | Named named ->
+        text ctx named.named_name.desc;
+        text ctx "(";
+        Seplist.opt_iter named.named_args ~f:(fun sep arg ->
+            write_spec_type arg;
+            write_sep sep ", ");
+        text ctx ")"
+      | _ -> ()
+    in
+
+    text ctx "-spec ";
+    begin match attr.spec_attr_mname with
+      | None -> ()
+      | Some (mname, _) ->
+        text ctx mname.desc;
+        text ctx ":"
+    end;
+    text ctx attr.spec_attr_fname.desc;
+    Seplist.iter attr.spec_attr_clauses
+      ~f:(fun sep clause ->
+          text ctx "(";
+          Seplist.opt_iter clause.spec_clause_args ~f:(fun sep arg ->
+              write_spec_type arg;
+              write_sep sep ", "); 
+          text ctx ") -> ";
+          write_spec_type clause.spec_clause_return;
+          write_sep sep ";");
+    dot_newline ctx
+
   | Fun_decl decl ->
     indent ctx;
     write_fun_body decl.fun_decl_body;
@@ -288,13 +336,28 @@ let rec write ctx node =
     space ctx;
     write ctx exp.binexp_right
 
+  | Paren paren ->
+    text ctx "(";
+    write ctx paren.enc_desc;
+    text ctx ")"
+
   | Var name
   | Uscore name ->
     text ctx name.desc
 
+  | Macro macro ->
+    text ctx "?";
+    text ctx macro.macro_name.desc
+
   | Atom value
-  | Int value ->
+  | Int value
+  | Float value ->
     text ctx value.desc
+
+  | String value ->
+    text ctx "\"";
+    text ctx value.desc;
+    text ctx "\""
 
   | Tuple tuple ->
     text ctx "{";
@@ -309,15 +372,7 @@ let rec write ctx node =
         write ctx tail);
     text ctx "]"
 
-(*
-
-  | Module_attr of module_attr
-  | Include_attr of include_attr
-  | Inclib_attr of inclib_attr
-  | Spec_attr of spec_attr
-  | Def_attr of def_attr
-*)
-  | _ -> ()
+  | _ -> text ctx "?"
 
 type formatted = {
   fmt_mod_name: Ast.t list;

@@ -12,10 +12,16 @@ module Spec_type = struct
     | Atom of text
     | Int of text
     | Nil (* TODO *)
-    | Named (* TODO *)
+    | Named of named
     | List of t
-    | Binary
     | Fun (* TODO *)
+
+  and named = {
+    named_name : text;
+    named_open : token;
+    named_args : t node_list option;
+    named_close : token;
+  }
 
 end
 

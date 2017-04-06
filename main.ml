@@ -1,6 +1,8 @@
 open Core.Std
 open Printf
 
+let usage = "usage: eryngii <command> [parameters] [options]"
+
 let file_exists file =
   match Sys.file_exists ~follow_symlinks:true file with
   | `No | `Unknown ->
@@ -27,38 +29,55 @@ let parse_file file =
           exit (-1)
         | e -> raise e)
 
-let command =
+let fmt =
   Command.basic
-    ~summary: (sprintf "Erlang lint, version %s" Conf.version)
+    ~summary: "formats a source file"
     Command.Spec.(
       empty
       +> flag "-d" no_arg ~doc:" debug output"
       +> flag "-v" no_arg ~doc:" print verbose message"
-      +> flag "-syntax" no_arg ~doc:" check syntax only"
-      +> flag "-debug-ast" no_arg ~doc:" print parse tree"
       +> anon (maybe ("filename" %: string))
     )
-    (fun debug verbose syntax debug_ast file_opt () ->
-       try
-         Printexc.record_backtrace true;
-         match file_opt with
-         | Some file ->
-           if syntax then
-             ignore @@ parse_file file
-           else if debug_ast then
-             let node = parse_file file in
-             printf "%s" (Ast.to_string node)
-           else begin
-             (* format *)
-             let node = parse_file file in
-             let fmt = Formatter.format node in
-             printf "%s\n" fmt
-           end
-         | None ->
-           Printf.printf "Error: No input files";
-           exit 1
-       with
-       | e -> raise e)
+    (fun debug verbose file_opt () ->
+       match file_opt with
+       | Some file ->
+         let node = parse_file file in
+         let fmt = Formatter.format node in
+         printf "%s\n" fmt
+       | None ->
+         Printf.printf "Error: No input files";
+         exit 1)
+
+let syntax =
+  Command.basic
+    ~summary: "check syntax of a source file"
+    Command.Spec.(
+      empty
+      +> flag "-d" no_arg ~doc:" debug output"
+      +> flag "-v" no_arg ~doc:" print verbose message"
+      +> anon (maybe ("filename" %: string))
+    )
+    (fun debug verbose file_opt () ->
+       match file_opt with
+       | Some file ->
+         ignore @@ parse_file file
+       | None ->
+         Printf.printf "Error: No input files";
+         exit 1)
+
+let main =
+  Command.group
+    ~summary:usage
+    [
+      ("fmt", fmt);
+      ("syntax", syntax);
+    ]
 
 let () =
-  Command.run ~version:Conf.version command
+  try
+    Printexc.record_backtrace true;
+    Command.run
+      ~version:(sprintf "eryngii %s" Conf.version)
+      main
+  with
+  | e -> raise e

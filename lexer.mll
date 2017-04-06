@@ -63,6 +63,7 @@ rule read =
   | ".."    { DOT2 (to_loc lexbuf) }
   | "..."   { DOT3 (to_loc lexbuf) }
   | "=="    { EQQ (to_loc lexbuf) }
+  | ":="    { CEQ (to_loc lexbuf) }
   | "/="    { NE (to_loc lexbuf) }
   | "=:="   { XEQ (to_loc lexbuf) }
   | "=/="   { XNE (to_loc lexbuf) }
@@ -83,6 +84,7 @@ rule read =
   | "++"    { LIST_ADD (to_loc lexbuf) }
   | "--"    { LIST_DIFF (to_loc lexbuf) }
   | "->"    { RARROW (to_loc lexbuf) }
+  | "=>"    { RARROW2 (to_loc lexbuf) }
   | "<-"    { LARROW (to_loc lexbuf) }
   | "<="    { LARROW2 (to_loc lexbuf) }
   | ">>"    { DLT (to_loc lexbuf) }
@@ -123,6 +125,8 @@ rule read =
   | attr "type" { TYPE_ATTR (to_word lexbuf) }
   | attr "opaque" { OPAQUE_ATTR (to_word lexbuf) }
   | attr "define" { DEFINE_ATTR (to_word lexbuf) }
+  | attr "behaviour" { BEHAV_ATTR (to_word lexbuf) }
+  | attr "record" { RECORD_ATTR (to_word lexbuf) }
   | _       { raise (Syntax_error (start_pos lexbuf, "Unexpected char: " ^ Lexing.lexeme lexbuf)) }
   | eof     { EOF (to_loc lexbuf) }
 

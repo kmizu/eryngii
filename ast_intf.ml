@@ -22,6 +22,9 @@ module Spec_type = struct
     | Named of named
     | List of t option enclosed
     | Fun of fun_
+    | Map of map
+    | Record of record
+    | Union of union
 
   and range = {
     range_start : text;
@@ -30,6 +33,8 @@ module Spec_type = struct
   }
 
   and named = {
+    named_module : text option;
+    named_colon : token option;
     named_name : text;
     named_open : token;
     named_args : t node_list option;
@@ -45,10 +50,45 @@ module Spec_type = struct
 
   and fun_body = {
     fun_body_open : token;
-    fun_body_args : [`None | `Dot | `Types of t node_list];
+    fun_body_args : [`None | `Dot of token | `Types of t node_list];
     fun_body_close : token;
     fun_body_arrow : token;
     fun_body_type : t;
+  }
+
+  and map = {
+    map_nsign : token;
+    map_open : token;
+    map_pairs : pair node_list option;
+    map_close : token;
+  }
+
+  and pair = {
+    pair_left : t;
+    pair_op : [`Mandatory of token | `Optional of token];
+    pair_right : t;
+  }
+
+  and record = {
+    rec_nsign : token;
+    rec_name : text;
+    rec_open : token;
+    rec_fields : field node_list option;
+    rec_close : token;
+  }
+
+  and field = {
+    field_name : text;
+    field_eq : token option;
+    field_init : t option;
+    field_colon : token;
+    field_type : t;
+  }
+
+  and union = {
+    union_left : t;
+    union_op : token;
+    union_right : t;
   }
 
 end
@@ -103,6 +143,8 @@ type t =
   | Type_attr of type_attr
   | Opaque_attr of type_attr
   | Def_attr of def_attr
+  | Behav_attr of behav_attr
+  | Record_attr of record_attr
   | Fun_decl of fun_decl
   | Catch of token * t
   | Block of exp_list enclosed
@@ -241,6 +283,26 @@ and def_attr = {
   def_attr_value : t;
   def_attr_close : token;
   def_attr_dot : token;
+}
+
+and behav_attr = {
+  behav_tag : text;
+  behav_open : token;
+  behav_name : text;
+  behav_close : token;
+  behav_dot : token;
+}
+
+and record_attr = {
+  rec_attr_tag : text;
+  rec_attr_open : token;
+  rec_attr_name : text;
+  rec_attr_comma : token;
+  rec_attr_rec_open : token;
+  rec_attr_fields : Spec_type.field node_list;
+  rec_attr_rec_close : token;
+  rec_attr_close : token;
+  rec_attr_dot : token;
 }
 
 and fun_decl = {

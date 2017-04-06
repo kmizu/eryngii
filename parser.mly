@@ -20,6 +20,7 @@ let paren open_ value close =
 %token <Ast.text> STRING
 %token <Ast.text> INT
 %token <Ast.text> FLOAT
+%token <Ast.text> BEHAV_ATTR       (* "-behaviour" *)
 %token <Ast.text> DEFINE_ATTR      (* "-define" *)
 %token <Ast.text> EXPORT_ATTR      (* "-export" *)
 %token <Ast.text> EXPORT_TYPE_ATTR (* "-export_type" *)
@@ -30,6 +31,7 @@ let paren open_ value close =
 %token <Ast.text> OPAQUE_ATTR      (* "-opaque" *)
 %token <Ast.text> SPEC_ATTR        (* "-spec" *)
 %token <Ast.text> TYPE_ATTR        (* "-type" *)
+%token <Ast.text> RECORD_ATTR      (* "-record" *)
 %token <Ast.token> LPAREN
 %token <Ast.token> RPAREN
 %token <Ast.token> LBRACK
@@ -61,6 +63,7 @@ let paren open_ value close =
 %token <Ast.token> BAR              (* "|" *)
 %token <Ast.token> DBAR             (* "||" *)
 %token <Ast.token> EQQ              (* "==" *)
+%token <Ast.token> CEQ              (* ":=" *)
 %token <Ast.token> NE               (* "/=" *)
 %token <Ast.token> XEQ              (* "=:=" *)
 %token <Ast.token> XNE              (* "=/=" *)
@@ -77,6 +80,7 @@ let paren open_ value close =
 %token <Ast.token> LIST_ADD         (* "++" *)
 %token <Ast.token> LIST_DIFF        (* "--" *)
 %token <Ast.token> RARROW           (* "->" *)
+%token <Ast.token> RARROW2          (* "=>" *)
 %token <Ast.token> LARROW           (* "<-" *)
 %token <Ast.token> LARROW2          (* "<=" *)
 %token <Ast.token> DLT              (* ">>" *)
@@ -136,6 +140,8 @@ module_attr:
   | spec_attr { $1 }
   | type_attr { $1 }
   | opaque_attr { $1 }
+  | behav_attr { $1 }
+  | record_attr { $1 }
   | MINUS LIDENT LPAREN exps RPAREN DOT
   { Ast.Module_attr {
       module_attr_minus = $1;
@@ -324,24 +330,8 @@ spec_arg:
 
   (* TODO *)
 spec_type:
-  | spec_type BAR spec_type { Ast.Spec_type.Nil }
   | LIDENT { Ast.Spec_type.Atom $1 }
-  | LIDENT LPAREN RPAREN
-  { Ast.Spec_type.Named {
-      named_name = $1;
-      named_open = $2;
-      named_args = None;
-      named_close = $3;
-    }
-  }
-  | LIDENT LPAREN spec_type_args RPAREN
-  { Ast.Spec_type.Named {
-      named_name = $1;
-      named_open = $2;
-      named_args = Some $3;
-      named_close = $4;
-    }
-  }
+  | spec_type_named { $1 }
   | INT { Ast.Spec_type.Int $1 }
   | INT DOT2 INT
   { Ast.Spec_type.Range {
@@ -377,6 +367,51 @@ spec_type:
       fun_close = $4;
     }
   }
+  | spec_type_map { $1 }
+  | spec_type_record { $1 }
+  | spec_type_union { $1 }
+
+spec_type_named:
+  | LIDENT LPAREN RPAREN
+  { Ast.Spec_type.Named {
+      named_module = None;
+      named_colon = None;
+      named_name = $1;
+      named_open = $2;
+      named_args = None;
+      named_close = $3;
+    }
+  }
+  | LIDENT LPAREN spec_type_args RPAREN
+  { Ast.Spec_type.Named {
+      named_module = None;
+      named_colon = None;
+      named_name = $1;
+      named_open = $2;
+      named_args = Some $3;
+      named_close = $4;
+    }
+  }
+  | LIDENT COLON LIDENT LPAREN RPAREN
+  { Ast.Spec_type.Named {
+      named_module = Some $1;
+      named_colon = Some $2;
+      named_name = $3;
+      named_open = $4;
+      named_args = None;
+      named_close = $5;
+    }
+  }
+  | LIDENT COLON LIDENT LPAREN spec_type_args RPAREN
+  { Ast.Spec_type.Named {
+      named_module = Some $1;
+      named_colon = Some $2;
+      named_name = $3;
+      named_open = $4;
+      named_args = Some $5;
+      named_close = $6;
+    }
+  }
 
 spec_type_args:
   | rev_spec_type_args { Seplist.rev $1 }
@@ -396,7 +431,7 @@ spec_fun_body:
   }
   | LPAREN DOT3 RPAREN RARROW spec_type
   { { Ast.Spec_type.fun_body_open = $1;
-      fun_body_args = `Dot;
+      fun_body_args = `Dot $2;
       fun_body_close = $3;
       fun_body_arrow = $4;
       fun_body_type = $5;
@@ -408,6 +443,72 @@ spec_fun_body:
       fun_body_close = $3;
       fun_body_arrow = $4;
       fun_body_type = $5;
+    }
+  }
+
+spec_type_map:
+  | NSIGN LBRACE RBRACE
+  { Ast.Spec_type.Map { map_nsign = $1;
+      map_open = $2;
+      map_pairs = None;
+      map_close = $3;
+    }
+  }
+  | NSIGN LBRACE spec_pairs RBRACE
+  { Ast.Spec_type.Map {
+      map_nsign = $1;
+      map_open = $2;
+      map_pairs = Some $3;
+      map_close = $4;
+    }
+  }
+
+spec_pairs:
+  | rev_spec_pairs { Seplist.rev $1 }
+
+rev_spec_pairs:
+  | spec_pair { Seplist.one $1 }
+  | rev_spec_pairs COMMA spec_pair { Seplist.cons $3 ~sep:$2 $1 }
+
+spec_pair:
+  | spec_type CEQ spec_type
+  { { Ast.Spec_type.pair_left = $1;
+      pair_op = `Mandatory $2;
+      pair_right = $3;
+    }
+  }
+  | spec_type RARROW2 spec_type
+  { { Ast.Spec_type.pair_left = $1;
+      pair_op = `Optional $2;
+      pair_right = $3;
+    }
+  }
+
+spec_type_record:
+  | NSIGN LIDENT LBRACE RBRACE
+  { Ast.Spec_type.Record {
+      rec_nsign = $1;
+      rec_name = $2;
+      rec_open = $3;
+      rec_fields = None;
+      rec_close = $4;
+    }
+  }
+  | NSIGN LIDENT LBRACE type_fields RBRACE
+  { Ast.Spec_type.Record {
+      rec_nsign = $1;
+      rec_name = $2;
+      rec_open = $3;
+      rec_fields = Some $4;
+      rec_close = $5;
+    }
+  }
+
+spec_type_union:
+  | spec_type BAR spec_type
+  { Ast.Spec_type.Union { union_left = $1;
+      union_op = $2;
+      union_right = $3;
     }
   }
 
@@ -460,6 +561,57 @@ opaque_attr:
       type_attr_colon = $6;
       type_attr_type = $7;
       type_attr_dot = $8;
+    }
+  }
+
+behav_attr:
+  | BEHAV_ATTR LPAREN LIDENT RPAREN DOT
+  { Ast.Behav_attr {
+      behav_tag = $1;
+      behav_open = $2;
+      behav_name = $3;
+      behav_close = $4;
+      behav_dot = $5;
+    }
+  }
+
+record_attr:
+  | RECORD_ATTR LPAREN LIDENT COMMA LBRACE type_fields RBRACE RPAREN DOT
+  { Ast.Record_attr {
+      rec_attr_tag = $1;
+      rec_attr_open = $2;
+      rec_attr_name = $3;
+      rec_attr_comma = $4;
+      rec_attr_rec_open = $5;
+      rec_attr_fields = $6;
+      rec_attr_rec_close = $7;
+      rec_attr_close = $8;
+      rec_attr_dot = $9;
+    }
+  }
+
+type_fields:
+  | rev_type_fields { Seplist.rev $1 }
+
+rev_type_fields:
+  | type_field { Seplist.one $1 }
+  | rev_type_fields COMMA type_field { Seplist.cons $3 ~sep:$2 $1 }
+
+type_field:
+  | LIDENT COLON2 spec_type
+  { { Ast.Spec_type.field_name = $1;
+        field_eq = None;
+        field_init = None;
+        field_colon = $2;
+        field_type = $3;
+    }
+  }
+  | LIDENT EQ spec_type COLON2 spec_type
+  { { Ast.Spec_type.field_name = $1;
+        field_eq = Some $2;
+        field_init = Some $3;
+        field_colon = $4;
+        field_type = $5;
     }
   }
 

@@ -807,14 +807,8 @@ patterns_opt:
   | patterns { $1 }
   | (* empty *) { Seplist.empty }
 
-(* TODO *)
 pattern:
-  | atomic { $1 }
-  | var { $1 }
-  | tuple_skel { $1 }
-  | list_skel { $1 }
-  | binary { $1 }
-  (*| record_pattern { $1 }*)
+  | record_exp { $1 }
 
 receive_exp:
   | RECEIVE cr_clauses END

@@ -6,21 +6,49 @@ type 'a node_list = ('a, token) Seplist.t
 
 type text = string Located.t
 
+type 'a enclosed = {
+  enc_open : token;
+  enc_desc : 'a;
+  enc_close : token;
+}
+
 module Spec_type = struct
 
   type t =
     | Atom of text
     | Int of text
-    | Nil (* TODO *)
+    | Range of range
+    | Nil (* TODO: remove *)
     | Named of named
-    | List of t
-    | Fun (* TODO *)
+    | List of t option enclosed
+    | Fun of fun_
+
+  and range = {
+    range_start : text;
+    range_dot : token;
+    range_end : text;
+  }
 
   and named = {
     named_name : text;
     named_open : token;
     named_args : t node_list option;
     named_close : token;
+  }
+
+  and fun_ = {
+    fun_tag : token;
+    fun_open : token;
+    fun_body : fun_body option;
+    fun_close : token;
+  }
+
+  and fun_body = {
+    fun_body_open : token;
+    fun_body_args : [`None | `Dot | `Types of t node_list];
+    fun_body_close : token;
+    fun_body_arrow : token;
+    fun_body_type : t;
   }
 
 end
@@ -67,10 +95,13 @@ type t =
   | Module_attr of module_attr
   | Modname_attr of modname_attr
   | Export_attr of export_attr
+  | Export_type_attr of export_attr
   | Import_attr of import_attr
   | Include_attr of include_attr
   | Inclib_attr of inclib_attr
   | Spec_attr of spec_attr
+  | Type_attr of type_attr
+  | Opaque_attr of type_attr
   | Def_attr of def_attr
   | Fun_decl of fun_decl
   | Catch of token * t
@@ -189,6 +220,17 @@ and spec_clause = {
   spec_clause_arrow : token;
   spec_clause_return : Spec_type.t;
   spec_clause_guard : (token * exp_list) option;
+}
+
+and type_attr = {
+  type_attr_tag : text;
+  type_attr_name : text;
+  type_attr_open : token;
+  type_attr_args : Spec_type.t node_list option;
+  type_attr_close : token;
+  type_attr_colon : token;
+  type_attr_type : Spec_type.t;
+  type_attr_dot : token;
 }
 
 and def_attr = {
@@ -396,12 +438,6 @@ and binary_elt = {
 and macro = {
   macro_q : token;
   macro_name : text;
-}
-
-and 'a enclosed = {
-  enc_open : token;
-  enc_desc : 'a;
-  enc_close : token;
 }
 
 and exp_list = t node_list

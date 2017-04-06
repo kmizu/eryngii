@@ -20,13 +20,16 @@ let paren open_ value close =
 %token <Ast.text> STRING
 %token <Ast.text> INT
 %token <Ast.text> FLOAT
-%token <Ast.text> MODULE_ATTR      (* "-module" *)
+%token <Ast.text> DEFINE_ATTR      (* "-define" *)
 %token <Ast.text> EXPORT_ATTR      (* "-export" *)
+%token <Ast.text> EXPORT_TYPE_ATTR (* "-export_type" *)
 %token <Ast.text> IMPORT_ATTR      (* "-import" *)
 %token <Ast.text> INCLUDE_ATTR     (* "-include" *)
 %token <Ast.text> INCLIB_ATTR      (* "-include_lib" *)
+%token <Ast.text> MODULE_ATTR      (* "-module" *)
+%token <Ast.text> OPAQUE_ATTR      (* "-opaque" *)
 %token <Ast.text> SPEC_ATTR        (* "-spec" *)
-%token <Ast.text> DEFINE_ATTR      (* "-define" *)
+%token <Ast.text> TYPE_ATTR        (* "-type" *)
 %token <Ast.token> LPAREN
 %token <Ast.token> RPAREN
 %token <Ast.token> LBRACK
@@ -35,8 +38,10 @@ let paren open_ value close =
 %token <Ast.token> RBRACE
 %token <Ast.token> COMMA
 %token <Ast.token> DOT              (* "." *)
+%token <Ast.token> DOT2             (* ".." *)
 %token <Ast.token> DOT3             (* "..." *)
 %token <Ast.token> COLON
+%token <Ast.token> COLON2
 %token <Ast.token> SEMI
 %token <Ast.token> NSIGN            (* "#" *)
 %token <Ast.token> AND              (* "and" *)
@@ -123,11 +128,14 @@ module_decl:
 module_attr:
   | modname_attr { $1 }
   | export_attr { $1 }
+  | export_type_attr { $1 }
   | import_attr { $1 }
   | include_attr { $1 }
   | include_lib_attr { $1 }
   | define_attr { $1 }
   | spec_attr { $1 }
+  | type_attr { $1 }
+  | opaque_attr { $1 }
   | MINUS LIDENT LPAREN exps RPAREN DOT
   { Ast.Module_attr {
       module_attr_minus = $1;
@@ -152,6 +160,19 @@ modname_attr:
 export_attr:
   | EXPORT_ATTR LPAREN LBRACK fun_sigs RBRACK RPAREN DOT
   { Ast.Export_attr {
+      export_attr_tag = $1;
+      export_attr_open = $2;
+      export_attr_fun_open = $3;
+      export_attr_funs = $4;
+      export_attr_fun_close = $5;
+      export_attr_close = $6;
+      export_attr_dot = $7;
+    }
+  }
+
+export_type_attr:
+  | EXPORT_TYPE_ATTR LPAREN LBRACK fun_sigs RBRACK RPAREN DOT
+  { Ast.Export_type_attr {
       export_attr_tag = $1;
       export_attr_open = $2;
       export_attr_fun_open = $3;
@@ -304,18 +325,58 @@ spec_arg:
   (* TODO *)
 spec_type:
   | spec_type BAR spec_type { Ast.Spec_type.Nil }
-  | atom { Ast.Spec_type.Nil }
-  | LIDENT LPAREN RPAREN { Ast.Spec_type.Nil }
-  | LIDENT LPAREN spec_type_args RPAREN { Ast.Spec_type.Nil }
+  | LIDENT { Ast.Spec_type.Atom $1 }
+  | LIDENT LPAREN RPAREN
+  { Ast.Spec_type.Named {
+      named_name = $1;
+      named_open = $2;
+      named_args = None;
+      named_close = $3;
+    }
+  }
+  | LIDENT LPAREN spec_type_args RPAREN
+  { Ast.Spec_type.Named {
+      named_name = $1;
+      named_open = $2;
+      named_args = Some $3;
+      named_close = $4;
+    }
+  }
   | INT { Ast.Spec_type.Int $1 }
-  | LBRACK RBRACK { Ast.Spec_type.Nil }
-  | LBRACK spec_type RBRACK { Ast.Spec_type.Nil }
-  | DLT DGT {Ast.Spec_type.Nil}
+  | INT DOT2 INT
+  { Ast.Spec_type.Range {
+      range_start = $1;
+      range_dot = $2;
+      range_end = $3;
+    }
+  }
+  | LBRACK RBRACK
+  { Ast.(Spec_type.List (enclose $1 None $2)) }
+  | LBRACK spec_type RBRACK
+  { Ast.(Spec_type.List (enclose $1 (Some $2) $3)) }
+
+  (* TODO *)
+  | DLT DGT { Ast.Spec_type.Nil}
   | DLT USCORE COLON INT DGT {Ast.Spec_type.Nil}
   | DLT USCORE COLON USCORE MUL INT DGT {Ast.Spec_type.Nil}
   | DLT USCORE COLON INT COMMA USCORE COLON USCORE MUL INT DGT {Ast.Spec_type.Nil}
-  | FUN LPAREN RPAREN { Ast.Spec_type.Nil }
-  | FUN LPAREN spec_fun_body RPAREN { Ast.Spec_type.Nil }
+
+  | FUN LPAREN RPAREN
+  { Ast.Spec_type.Fun {
+      fun_tag = $1;
+      fun_open = $2;
+      fun_body = None;
+      fun_close = $3;
+    }
+  }
+  | FUN LPAREN spec_fun_body RPAREN
+  { Ast.Spec_type.Fun {
+      fun_tag = $1;
+      fun_open = $2;
+      fun_body = Some $3;
+      fun_close = $4;
+    }
+  }
 
 spec_type_args:
   | rev_spec_type_args { Seplist.rev $1 }
@@ -325,9 +386,82 @@ rev_spec_type_args:
   | rev_spec_type_args COMMA spec_type { Seplist.cons $3 ~sep:$2 $1 }
 
 spec_fun_body:
-  | LPAREN RPAREN RARROW spec_type { () }
-  | LPAREN DOT3 RPAREN RARROW spec_type { () }
-  | LPAREN spec_args RPAREN RARROW spec_type { () }
+  | LPAREN RPAREN RARROW spec_type
+  { { Ast.Spec_type.fun_body_open = $1;
+      fun_body_args = `None;
+      fun_body_close = $2;
+      fun_body_arrow = $3;
+      fun_body_type = $4;
+    }
+  }
+  | LPAREN DOT3 RPAREN RARROW spec_type
+  { { Ast.Spec_type.fun_body_open = $1;
+      fun_body_args = `Dot;
+      fun_body_close = $3;
+      fun_body_arrow = $4;
+      fun_body_type = $5;
+    }
+  }
+  | LPAREN spec_args RPAREN RARROW spec_type
+  { { Ast.Spec_type.fun_body_open = $1;
+      fun_body_args = `Types $2;
+      fun_body_close = $3;
+      fun_body_arrow = $4;
+      fun_body_type = $5;
+    }
+  }
+
+type_attr:
+  | TYPE_ATTR LIDENT LPAREN RPAREN COLON2 spec_type DOT
+  { Ast.Type_attr {
+      type_attr_tag = $1;
+      type_attr_name = $2;
+      type_attr_open = $3;
+      type_attr_args = None;
+      type_attr_close = $4;
+      type_attr_colon = $5;
+      type_attr_type = $6;
+      type_attr_dot = $7;
+    }
+  }
+  | TYPE_ATTR LIDENT LPAREN spec_args RPAREN COLON2 spec_type DOT
+  { Ast.Type_attr {
+      type_attr_tag = $1;
+      type_attr_name = $2;
+      type_attr_open = $3;
+      type_attr_args = Some $4;
+      type_attr_close = $5;
+      type_attr_colon = $6;
+      type_attr_type = $7;
+      type_attr_dot = $8;
+    }
+  }
+
+opaque_attr:
+  | OPAQUE_ATTR LIDENT LPAREN RPAREN COLON2 spec_type DOT
+  { Ast.Type_attr {
+      type_attr_tag = $1;
+      type_attr_name = $2;
+      type_attr_open = $3;
+      type_attr_args = None;
+      type_attr_close = $4;
+      type_attr_colon = $5;
+      type_attr_type = $6;
+      type_attr_dot = $7;
+    }
+  }
+  | OPAQUE_ATTR LIDENT LPAREN spec_args RPAREN COLON2 spec_type DOT
+  { Ast.Type_attr {
+      type_attr_tag = $1;
+      type_attr_name = $2;
+      type_attr_open = $3;
+      type_attr_args = Some $4;
+      type_attr_close = $5;
+      type_attr_colon = $6;
+      type_attr_type = $7;
+      type_attr_dot = $8;
+    }
+  }
 
 fun_decl:
   | fun_clauses DOT

@@ -285,7 +285,7 @@ let rec write ctx node =
       | Nil -> text ctx "[]"
       | List ty ->
         text ctx "[";
-        write_spec_type ty;
+        Option.iter ty.enc_desc ~f:write_spec_type;
         text ctx "]";
       | Named named ->
         text ctx named.named_name.desc;

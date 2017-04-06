@@ -37,14 +37,7 @@ let lower = ['a'-'z'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 let upper = [ 'A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 let uscore = '_' ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 let char = '$' ('\\' ['b' 'd' 'e' 'f' 'n' 's' 'r' 't' 'v' '\'' '"' '\\'] | _)
-let attr_prefix = '-' white*
-let module_attr = attr_prefix "module"
-let export_attr = attr_prefix "export"
-let import_attr = attr_prefix "import"
-let include_attr = attr_prefix "include"
-let inclib_attr = attr_prefix "include_lib"
-let spec_attr = attr_prefix "spec"
-let define_attr = attr_prefix "define"
+let attr = '-' white*
 let comment = '%' [^'\r' '\n']*
 
 rule read =
@@ -63,9 +56,11 @@ rule read =
   | '['     { LBRACK (to_loc lexbuf) }
   | ']'     { RBRACK (to_loc lexbuf) }
   | ':'     { COLON (to_loc lexbuf) }
+  | "::"    { COLON2 (to_loc lexbuf) }
   | ';'     { SEMI (to_loc lexbuf) }
   | ','     { COMMA (to_loc lexbuf) }
   | '.'     { DOT (to_loc lexbuf) }
+  | ".."    { DOT2 (to_loc lexbuf) }
   | "..."   { DOT3 (to_loc lexbuf) }
   | "=="    { EQQ (to_loc lexbuf) }
   | "/="    { NE (to_loc lexbuf) }
@@ -118,16 +113,16 @@ rule read =
   | lower   { LIDENT (to_word lexbuf) }
   | upper   { UIDENT (to_word lexbuf) }
   | uscore  { USCORE (to_word lexbuf) }
-  | module_attr { MODULE_ATTR (to_word lexbuf) }
-  | export_attr { EXPORT_ATTR (to_word lexbuf) }
-  | import_attr { IMPORT_ATTR (to_word lexbuf) }
-  | include_attr { INCLUDE_ATTR (to_word lexbuf) }
-  | spec_attr { SPEC_ATTR (to_word lexbuf) }
-  | define_attr { DEFINE_ATTR (to_word lexbuf) }
-  | export_attr { EXPORT_ATTR (to_word lexbuf) }
-  | import_attr { IMPORT_ATTR (to_word lexbuf) }
-  | include_attr { INCLUDE_ATTR (to_word lexbuf) }
-  | inclib_attr { INCLIB_ATTR (to_word lexbuf) }
+  | attr "module" { MODULE_ATTR (to_word lexbuf) }
+  | attr "export" { EXPORT_ATTR (to_word lexbuf) }
+  | attr "export_type" { EXPORT_TYPE_ATTR (to_word lexbuf) }
+  | attr "import" { IMPORT_ATTR (to_word lexbuf) }
+  | attr "include"{ INCLUDE_ATTR (to_word lexbuf) }
+  | attr "include_lib"{ INCLIB_ATTR (to_word lexbuf) }
+  | attr "spec" { SPEC_ATTR (to_word lexbuf) }
+  | attr "type" { TYPE_ATTR (to_word lexbuf) }
+  | attr "opaque" { OPAQUE_ATTR (to_word lexbuf) }
+  | attr "define" { DEFINE_ATTR (to_word lexbuf) }
   | _       { raise (Syntax_error (start_pos lexbuf, "Unexpected char: " ^ Lexing.lexeme lexbuf)) }
   | eof     { EOF (to_loc lexbuf) }
 

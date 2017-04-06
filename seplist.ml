@@ -1,3 +1,5 @@
+open Core.Std
+
 type ('a, 'b) t =
   | Cons of 'a * ('b, 'a) t
   | Nil
@@ -36,3 +38,5 @@ let length es =
 let iter es ~f =
   fold_left es ~init:() ~f:(fun _accu sep e -> f sep e)
 
+let opt_iter es_opt ~f =
+  Option.iter es_opt ~f:(fun es -> iter es ~f)

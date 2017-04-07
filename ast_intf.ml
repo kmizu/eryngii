@@ -165,7 +165,7 @@ type t =
   | Atom of text
   | Q_atom of text enclosed
   | Char of text
-  | String of text
+  | String of text list
   | Int of text
   | Float of text
   | List of erl_list

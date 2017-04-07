@@ -48,6 +48,7 @@ rule read =
   | char    { CHAR (to_word lexbuf) }
   | int     { INT (to_word lexbuf) }
   | float   { FLOAT (to_word lexbuf) }
+  | '\''    { ATOM (strlit lexbuf read_atom) } 
   | '"'     { STRING (strlit lexbuf read_string) } 
   | '('     { LPAREN (to_loc lexbuf) }
   | ')'     { RPAREN (to_loc lexbuf) }
@@ -129,6 +130,23 @@ rule read =
   | attr "record" { RECORD_ATTR (to_word lexbuf) }
   | _       { raise (Syntax_error (start_pos lexbuf, "Unexpected char: " ^ Lexing.lexeme lexbuf)) }
   | eof     { EOF (to_loc lexbuf) }
+
+and read_atom buf =
+  parse
+  | '\''      { Buffer.contents buf }
+  | '\\' '/'  { Buffer.add_char buf '/'; read_atom buf lexbuf }
+  | '\\' '\\' { Buffer.add_char buf '\\'; read_atom buf lexbuf }
+  | '\\' 'b'  { Buffer.add_char buf '\b'; read_atom buf lexbuf }
+  | '\\' 'f'  { Buffer.add_char buf '\012'; read_atom buf lexbuf }
+  | '\\' 'n'  { Buffer.add_char buf '\n'; read_atom buf lexbuf }
+  | '\\' 'r'  { Buffer.add_char buf '\r'; read_atom buf lexbuf }
+  | '\\' 't'  { Buffer.add_char buf '\t'; read_atom buf lexbuf }
+  | [^ '\'' '\\']+
+    { Buffer.add_string buf (Lexing.lexeme lexbuf);
+      read_atom buf lexbuf
+    }
+  | _ { raise (Syntax_error (start_pos lexbuf, "Illegal atom character: " ^ Lexing.lexeme lexbuf)) }
+  | eof { raise (Syntax_error (start_pos lexbuf, "Atom is not terminated")) }
 
 and read_string buf =
   parse

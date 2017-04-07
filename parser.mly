@@ -17,6 +17,7 @@ let paren open_ value close =
 %token <Ast.text> LIDENT
 %token <Ast.text> USCORE           (* "_" *)
 %token <Ast.text> CHAR
+%token <Ast.text> ATOM
 %token <Ast.text> STRING
 %token <Ast.text> INT
 %token <Ast.text> FLOAT
@@ -330,7 +331,7 @@ spec_arg:
 
   (* TODO *)
 spec_type:
-  | LIDENT { Ast.Spec_type.Atom $1 }
+  | raw_atom { Ast.Spec_type.Atom $1 }
   | spec_type_named { $1 }
   | INT { Ast.Spec_type.Int $1 }
   | INT DOT2 INT
@@ -923,7 +924,11 @@ atomic:
   | float { $1 }
 
 atom:
-  | LIDENT { (Ast.Atom $1) }
+  | raw_atom { Ast.Atom $1 }
+
+raw_atom:
+  | LIDENT { `Unenclosed $1 }
+  | ATOM { `Enclosed $1 }
 
 char:
   | CHAR { (Ast.Char $1) }

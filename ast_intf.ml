@@ -6,6 +6,10 @@ type 'a node_list = ('a, token) Seplist.t
 
 type text = string Located.t
 
+type 'a enclosed_lit = [`Unenclosed of 'a | `Enclosed of 'a]
+
+type atom = text enclosed_lit
+
 type 'a enclosed = {
   enc_open : token;
   enc_desc : 'a;
@@ -15,7 +19,7 @@ type 'a enclosed = {
 module Spec_type = struct
 
   type t =
-    | Atom of text
+    | Atom of atom
     | Int of text
     | Range of range
     | Nil (* TODO: remove *)
@@ -162,7 +166,7 @@ type t =
   | Paren of t enclosed
   | Uscore of text
   | Var of text
-  | Atom of text
+  | Atom of atom
   | Q_atom of text enclosed
   | Char of text
   | String of text list

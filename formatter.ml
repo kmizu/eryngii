@@ -280,7 +280,12 @@ let rec write ctx node =
     let rec write_spec_type ty =
       let open Spec_type in
       match ty with
-      | Atom name -> text ctx name.desc
+      | Atom (`Unenclosed name) ->
+        text ctx name.desc
+      | Atom (`Enclosed name) ->
+        text ctx "'";
+        text ctx name.desc;
+        text ctx "'"
       | Int value ->
         text ctx value.desc
       | Nil ->
@@ -351,10 +356,17 @@ let rec write ctx node =
     text ctx "?";
     text ctx macro.macro_name.desc
 
-  | Atom value
   | Int value
   | Float value ->
     text ctx value.desc
+
+  | Atom (`Unenclosed value) ->
+    text ctx value.desc
+
+  | Atom (`Enclosed value) ->
+    text ctx "'";
+    text ctx value.desc;
+    text ctx "'"
 
   | String values ->
     List.iter values ~f:(fun value ->

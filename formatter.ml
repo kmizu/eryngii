@@ -340,6 +340,24 @@ let rec write ctx node =
           write_sep sep ";");
     dot_newline ctx
 
+  | Flow_macro_attr attr ->
+    text ctx "-";
+    text ctx (match attr.flow_macro_attr_tag_type with
+        | `Undef -> "undef"
+        | `Ifdef -> "ifdef"
+        | `Ifndef -> "ifndef");
+    text ctx "(";
+    text ctx attr.flow_macro_attr_macro.desc;
+    text ctx ")";
+    dot_newline ctx
+
+  | Flow_attr attr ->
+    text ctx "-";
+    text ctx (match attr.flow_attr_tag_type with
+        | `Else -> "else"
+        | `Endif -> "endif");
+    dot_newline ctx
+
   | Fun_decl decl ->
     indent ctx;
     write_fun_body decl.fun_decl_body;

@@ -281,8 +281,10 @@ let rec write ctx node =
       let open Spec_type in
       match ty with
       | Atom name -> text ctx name.desc
-      | Int value -> text ctx value.desc
-      | Nil -> text ctx "[]"
+      | Int value ->
+        text ctx value.desc
+      | Nil ->
+        text ctx "[]"
       | List ty ->
         text ctx "[";
         Option.iter ty.enc_desc ~f:write_spec_type;

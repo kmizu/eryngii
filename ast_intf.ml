@@ -477,16 +477,17 @@ and field = {
 }
 
 and map = {
-  map_sharp : token;
+  map_exp : t option;
+  map_nsign : token;
   map_open : token;
-  map_assocs : map_assoc node_list;
+  map_pairs : map_pair node_list option;
   map_close : token;
 }
 
-and map_assoc = {
-  map_assoc_key : t;
-  map_assoc_val : t;
-  map_assoc_sep : [`Put | `Update] Located.t;
+and map_pair = {
+  map_pair_key : t;
+  map_pair_sep : token;
+  map_pair_value : t;
 }
 
 and binary_elt = {

@@ -100,15 +100,15 @@ let paren open_ value close =
 %token <Ast.token> WHEN             (* "when" *)
 %token <Ast.token> EOF
 
-(*
-%nonassoc shift
 %nonassoc CATCH
-%right LIST_ADD LIST_DIFF
+%right EQ BANG
+%nonassoc ORELSE
+%nonassoc ANDALSO
+%right PLUS2 MINUS2
 %left PLUS MINUS
 %nonassoc SEMI
 %nonassoc NSIGN
 %nonassoc COLON
-*)
 
 %left BAR
 
@@ -684,7 +684,7 @@ exp:
   | match_exp { $1 }
 
 match_exp:
-  | pattern EQ match_exp
+  | match_exp EQ match_exp
   { binexp $1 (locate $2 Ast.Op_eq) $3 }
   | send_exp { $1 }
 
@@ -785,7 +785,7 @@ record_exp:
       update_assocs = $4;
       update_close = $5; }
   }
-  | app_exp { $1 }
+  | map_exp { $1 }
 
 record_field_updates_opt:
   | record_field_updates { $1 }
@@ -804,6 +804,60 @@ record_field_update:
   { { Ast.assoc_key = $1;
         assoc_val = $3;
         assoc_sep = $2; }
+  }
+
+map_exp:
+  | NSIGN LBRACE RBRACE
+  { Ast.Map {
+      map_exp = None;
+      map_nsign = $1;
+      map_open = $2;
+      map_pairs = None;
+      map_close = $3;
+    }
+  }
+  | record_exp NSIGN LBRACE RBRACE
+  { Ast.Map {
+      map_exp = Some $1;
+      map_nsign = $2;
+      map_open = $3;
+      map_pairs = None;
+      map_close = $4;
+    }
+  }
+  | NSIGN LBRACE map_pairs RBRACE
+  { Ast.Map {
+      map_exp = None;
+      map_nsign = $1;
+      map_open = $2;
+      map_pairs = Some $3;
+      map_close = $4;
+    }
+  }
+  | record_exp NSIGN LBRACE map_pairs RBRACE
+  { Ast.Map {
+      map_exp = Some $1;
+      map_nsign = $2;
+      map_open = $3;
+      map_pairs = Some $4;
+      map_close = $5;
+    }
+  }
+  | app_exp { $1 }
+
+map_pairs:
+  | rev_map_pairs { $1 }
+
+rev_map_pairs:
+  | map_pair { Seplist.one $1 }
+  | rev_map_pairs COMMA map_pair { Seplist.cons $3 ~sep:$2 $1 }
+
+map_pair:
+  | exp RARROW2 exp
+  { { Ast.map_pair_key = $1;
+        map_pair_sep = $2;
+        map_pair_value = $3;
+    }
   }
 
 app_exp:
@@ -1094,7 +1148,7 @@ patterns_opt:
   | (* empty *) { Seplist.empty }
 
 pattern:
-  | record_exp { $1 }
+  | match_exp { $1 }
 
 receive_exp:
   | RECEIVE cr_clauses END

@@ -163,6 +163,7 @@ FILES[] =
 	located
 	location
 	main
+	naming
 	parser
 	position
 	seplist

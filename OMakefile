@@ -22,7 +22,7 @@
 # Phony targets are scoped, so you probably want to declare them first.
 #
 
-.PHONY: install uninstall clean
+.PHONY: all install uninstall clean
 
 ########################################################################
 # Subdirectories.
@@ -174,7 +174,10 @@ PROGRAM = eryngii
 #
 OCamlProgram($(PROGRAM), $(FILES))
 
-.DEFAULT: $(PROGRAM)
+all: $(PROGRAM)
+	mv $(PROGRAM).opt $(PROGRAM)
+
+.DEFAULT: all
 
 install: $(PROGRAM) $(OCamlProgramCopy install, $(PREFIX)/bin, $(PROGRAM))
 

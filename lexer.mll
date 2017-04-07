@@ -110,7 +110,7 @@ rule read =
   | "let"   { LET (to_loc lexbuf) }
   | "of"    { OF (to_loc lexbuf) }
   | "or"    { OR (to_loc lexbuf) }
-  | "oralse" { ORELSE (to_loc lexbuf) }
+  | "orelse" { ORELSE (to_loc lexbuf) }
   | "receive" { RECEIVE (to_loc lexbuf) }
   | "rem"   { REM (to_loc lexbuf) }
   | "try"   { TRY (to_loc lexbuf) }
@@ -130,6 +130,11 @@ rule read =
   | attr "define" { DEFINE_ATTR (to_word lexbuf) }
   | attr "behaviour" { BEHAV_ATTR (to_word lexbuf) }
   | attr "record" { RECORD_ATTR (to_word lexbuf) }
+  | attr "undef" { UNDEF_ATTR (to_word lexbuf) }
+  | attr "ifdef" { IFDEF_ATTR (to_word lexbuf) }
+  | attr "ifndef" { IFNDEF_ATTR (to_word lexbuf) }
+  | attr "else" { ELSE_ATTR (to_word lexbuf) }
+  | attr "endif" { ENDIF_ATTR (to_word lexbuf) }
   | _       { raise (Syntax_error (start_pos lexbuf, "Unexpected char: " ^ Lexing.lexeme lexbuf)) }
   | eof     { EOF (to_loc lexbuf) }
 

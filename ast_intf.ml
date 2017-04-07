@@ -123,7 +123,9 @@ and op_desc =
   | Op_quo              (* "div" *)
   | Op_rem              (* "rem" *)
   | Op_and              (* "and" *)
+  | Op_andalso          (* "andalso" *)
   | Op_or               (* "or" *)
+  | Op_orelse           (* "orelse" *)
   | Op_xor              (* "xor" *)
   | Op_sand             (* "andalso" *)
   | Op_sor              (* "orelse" *)
@@ -149,6 +151,8 @@ type t =
   | Def_attr of def_attr
   | Behav_attr of behav_attr
   | Record_attr of record_attr
+  | Flow_macro_attr of flow_macro_attr
+  | Flow_attr of flow_attr
   | Fun_decl of fun_decl
   | Catch of token * t
   | Block of exp_list enclosed
@@ -307,6 +311,20 @@ and record_attr = {
   rec_attr_rec_close : token;
   rec_attr_close : token;
   rec_attr_dot : token;
+}
+
+and flow_macro_attr = {
+  flow_macro_attr_tag_type : [`Undef | `Ifdef | `Ifndef];
+  flow_macro_attr_tag : text;
+  flow_macro_attr_open : token;
+  flow_macro_attr_macro : text;
+  flow_macro_attr_close : token;
+  flow_macro_attr_dot : token;
+}
+and flow_attr = {
+  flow_attr_tag_type : [`Else | `Endif];
+  flow_attr_tag : text;
+  flow_attr_dot : token;
 }
 
 and fun_decl = {

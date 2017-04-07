@@ -33,6 +33,11 @@ let paren open_ value close =
 %token <Ast.text> SPEC_ATTR        (* "-spec" *)
 %token <Ast.text> TYPE_ATTR        (* "-type" *)
 %token <Ast.text> RECORD_ATTR      (* "-record" *)
+%token <Ast.text> UNDEF_ATTR       (* "-undef" *)
+%token <Ast.text> IFDEF_ATTR       (* "-ifdef" *)
+%token <Ast.text> IFNDEF_ATTR      (* "-ifndef" *)
+%token <Ast.text> ELSE_ATTR        (* "-else" *)
+%token <Ast.text> ENDIF_ATTR       (* "-endif" *)
 %token <Ast.token> LPAREN
 %token <Ast.token> RPAREN
 %token <Ast.token> LBRACK
@@ -143,6 +148,7 @@ module_attr:
   | opaque_attr { $1 }
   | behav_attr { $1 }
   | record_attr { $1 }
+  | flow_macro_attr { $1 }
   | MINUS LIDENT LPAREN exps RPAREN DOT
   { Ast.Module_attr {
       module_attr_minus = $1;
@@ -616,6 +622,52 @@ type_field:
     }
   }
 
+flow_macro_attr:
+  | UNDEF_ATTR LPAREN macro_name RPAREN DOT
+  { Ast.Flow_macro_attr {
+      flow_macro_attr_tag_type = `Undef;
+      flow_macro_attr_tag = $1;
+      flow_macro_attr_open = $2;
+      flow_macro_attr_macro = $3;
+      flow_macro_attr_close = $4;
+      flow_macro_attr_dot = $5;
+    }
+  }
+  | IFDEF_ATTR LPAREN macro_name RPAREN DOT
+  { Ast.Flow_macro_attr {
+      flow_macro_attr_tag_type = `Ifdef;
+      flow_macro_attr_tag = $1;
+      flow_macro_attr_open = $2;
+      flow_macro_attr_macro = $3;
+      flow_macro_attr_close = $4;
+      flow_macro_attr_dot = $5;
+    }
+  }
+  | IFNDEF_ATTR LPAREN macro_name RPAREN DOT
+  { Ast.Flow_macro_attr {
+      flow_macro_attr_tag_type = `Ifndef;
+      flow_macro_attr_tag = $1;
+      flow_macro_attr_open = $2;
+      flow_macro_attr_macro = $3;
+      flow_macro_attr_close = $4;
+      flow_macro_attr_dot = $5;
+    }
+  }
+  | ELSE_ATTR DOT
+  { Ast.Flow_attr {
+      flow_attr_tag_type = `Else;
+      flow_attr_tag = $1;
+      flow_attr_dot = $2;
+    }
+  }
+  | ENDIF_ATTR DOT
+  { Ast.Flow_attr {
+      flow_attr_tag_type = `Endif;
+      flow_attr_tag = $1;
+      flow_attr_dot = $2;
+    }
+  }
+
 fun_decl:
   | fun_clauses DOT
   { Ast.Fun_decl {
@@ -690,8 +742,18 @@ match_exp:
   | send_exp { $1 }
 
 send_exp:
-  | compare_exp BANG send_exp
+  | send_exp BANG send_exp
   { binexp $1 (locate $2 Ast.Op_ep) $3 }
+  | or_cond_exp { $1 }
+
+or_cond_exp:
+  | or_cond_exp ORELSE or_cond_exp
+  { binexp $1 (locate $2 Ast.Op_orelse) $3 }
+  | and_cond_exp { $1 }
+
+and_cond_exp:
+  | and_cond_exp ANDALSO and_cond_exp
+  { binexp $1 (locate $2 Ast.Op_andalso) $3 }
   | compare_exp { $1 }
 
 compare_exp:
@@ -906,10 +968,12 @@ primary_exp:
   | LPAREN exp RPAREN { paren $1 $2 $3 }
 
 macro:
-  | Q UIDENT
+  | Q macro_name
   { Ast.Macro { macro_q = $1; macro_name = $2 } }
-  | Q LIDENT
-  { Ast.Macro { macro_q = $1; macro_name = $2 } }
+
+macro_name:
+  | LIDENT { $1 }
+  | UIDENT { $1 }
 
 var:
   | UIDENT { Ast.Var $1 }

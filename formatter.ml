@@ -1,4 +1,5 @@
 open Core.Std
+open Located
 
 module Comment = struct
 
@@ -68,6 +69,14 @@ module Context = struct
 
   let word ctx s =
     text ctx s
+
+  let atom ctx = function
+    | `Unenclosed name ->
+      text ctx name.desc
+    | `Enclosed name ->
+      text ctx "'";
+      text ctx name.desc;
+      text ctx "'"
 
   let rarrow ctx =
     add ctx @@ Op.Text "->"

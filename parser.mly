@@ -923,7 +923,11 @@ char:
   | CHAR { (Ast.Char $1) }
 
 string:
-  | STRING { (Ast.String $1) }
+  | rev_strvals { Ast.String $1 }
+
+rev_strvals:
+  | STRING { [$1] }
+  | rev_strvals STRING { $2 :: $1 }
 
 integer:
   | INT { (Ast.Int $1) }

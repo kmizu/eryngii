@@ -354,10 +354,11 @@ let rec write ctx node =
   | Float value ->
     text ctx value.desc
 
-  | String value ->
-    text ctx "\"";
-    text ctx value.desc;
-    text ctx "\""
+  | String values ->
+    List.iter values ~f:(fun value ->
+        text ctx "\"";
+        text ctx value.desc;
+        text ctx "\"")
 
   | Tuple tuple ->
     text ctx "{";

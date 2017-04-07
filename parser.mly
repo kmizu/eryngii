@@ -853,9 +853,15 @@ rev_map_pairs:
   | rev_map_pairs COMMA map_pair { Seplist.cons $3 ~sep:$2 $1 }
 
 map_pair:
+  | exp CEQ exp
+  { { Ast.map_pair_key = $1;
+        map_pair_op = `Update $2;
+        map_pair_value = $3;
+    }
+  }
   | exp RARROW2 exp
   { { Ast.map_pair_key = $1;
-        map_pair_sep = $2;
+        map_pair_op = `New $2;
         map_pair_value = $3;
     }
   }

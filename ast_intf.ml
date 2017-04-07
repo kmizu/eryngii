@@ -486,7 +486,7 @@ and map = {
 
 and map_pair = {
   map_pair_key : t;
-  map_pair_sep : token;
+  map_pair_op : [`New of token | `Update of token];
   map_pair_value : t;
 }
 

@@ -279,9 +279,9 @@ let rec write ctx node =
     text ctx "]).";
     newline ctx
 
-  | Def_attr attr ->
+  | Define_attr attr ->
     text ctx "-define(";
-    write ctx attr.def_attr_name;
+    text ctx @@ Naming.uppercase attr.def_attr_name.desc;
     text ctx ", ";
     write ctx attr.def_attr_value;
     text ctx ").";
@@ -365,7 +365,7 @@ let rec write ctx node =
 
   | Macro macro ->
     text ctx "?";
-    text ctx macro.macro_name.desc
+    text ctx @@ Naming.uppercase macro.macro_name.desc
 
   | Int value
   | Float value ->

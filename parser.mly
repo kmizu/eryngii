@@ -250,8 +250,8 @@ include_lib_attr:
   }
 
 define_attr:
-  | DEFINE_ATTR LPAREN exp COMMA exp RPAREN DOT
-  { Ast.Def_attr {
+  | DEFINE_ATTR LPAREN UIDENT COMMA exp RPAREN DOT
+  { Ast.Define_attr {
       def_attr_tag = $1;
       def_attr_open = $2;
       def_attr_name = $3;
@@ -972,7 +972,6 @@ macro:
   { Ast.Macro { macro_q = $1; macro_name = $2 } }
 
 macro_name:
-  | LIDENT { $1 }
   | UIDENT { $1 }
 
 var:

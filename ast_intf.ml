@@ -148,7 +148,7 @@ type t =
   | Spec_attr of spec_attr
   | Type_attr of type_attr
   | Opaque_attr of type_attr
-  | Def_attr of def_attr
+  | Define_attr of define_attr
   | Behav_attr of behav_attr
   | Record_attr of record_attr
   | Flow_macro_attr of flow_macro_attr
@@ -283,10 +283,10 @@ and type_attr = {
   type_attr_dot : token;
 }
 
-and def_attr = {
+and define_attr = {
   def_attr_tag : text;
   def_attr_open : token;
-  def_attr_name : t;
+  def_attr_name : text;
   def_attr_comma : token;
   def_attr_value : t;
   def_attr_close : token;

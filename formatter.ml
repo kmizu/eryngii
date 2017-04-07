@@ -365,7 +365,7 @@ let rec write ctx node =
 
   | Macro macro ->
     text ctx "?";
-    text ctx @@ Naming.uppercase macro.macro_name.desc
+    text ctx macro.macro_name.desc
 
   | Int value
   | Float value ->

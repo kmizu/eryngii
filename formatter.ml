@@ -114,6 +114,14 @@ module Context = struct
 
 end
 
+let format_comment s =
+  let body = String.lstrip s ~drop:(fun c -> c = '%') in
+  let body' = String.lstrip body
+      ~drop:(fun c -> Option.is_some @@ String.index " \t\r\n" c)
+  in
+  let prefix = String.make (String.length s - String.length body) '%' in
+  prefix ^ " " ^ body'
+
 let write_comment ctx pos =
   let open Context in
   let open Located in
@@ -122,14 +130,12 @@ let write_comment ctx pos =
   let comments = List.filter ctx.comments
       ~f:(fun com ->
           let start = (Option.value_exn com.text.loc).start in
-          not com.used && start.line < pos.line
-        )
+          not com.used && start.line < pos.line)
   in
   List.iter comments ~f:(fun com ->
       com.used <- true;
-      text ctx com.text.desc;
-      newline ctx);
-  ()
+      text ctx @@ format_comment com.text.desc;
+      newline ctx)
 
 let rec write ctx node =
   let open Ast_intf in

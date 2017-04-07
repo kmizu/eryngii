@@ -290,6 +290,18 @@ let rec write ctx node =
     text ctx "]).";
     newline ctx
 
+  | Include_attr attr ->
+    text ctx "-include(";
+    string ctx attr.include_attr_file.desc;
+    text ctx ").";
+    newline ctx
+
+  | Inclib_attr attr ->
+    text ctx "-include_lib(";
+    string ctx attr.inclib_attr_file.desc;
+    text ctx ").";
+    newline ctx
+
   | Define_attr attr ->
     text ctx "-define(";
     text ctx @@ Naming.uppercase attr.def_attr_name.desc;

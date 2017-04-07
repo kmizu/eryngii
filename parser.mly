@@ -730,8 +730,6 @@ shift_op:
 
 mul_exp:
   | mul_exp mul_op prefix_exp { binexp $1 $2 $3 }
-  | mul_exp AND prefix_exp
-  { binexp $1 (locate $2 Ast.Op_and) $3 }
   | prefix_exp { $1 }
 
 mul_op:
@@ -739,6 +737,7 @@ mul_op:
   | DIV { locate $1 Ast.Op_div }
   | QUO { locate $1 Ast.Op_quo }
   | REM { locate $1 Ast.Op_rem }
+  | AND { locate $1 Ast.Op_and }
   | LAND { locate $1 Ast.Op_land }
 
 prefix_exp:

@@ -58,7 +58,7 @@ let paren open_ value close =
 %token <Ast.token> LSHIFT           (* "bsl" *)
 %token <Ast.token> RSHIFT           (* "bsr" *)
 %token <Ast.token> EQ               (* "=" *)
-%token <Ast.token> EP               (* "!" *)
+%token <Ast.token> BANG             (* "!" *)
 %token <Ast.token> Q                (* "?" *)
 %token <Ast.token> BAR              (* "|" *)
 %token <Ast.token> DBAR             (* "||" *)
@@ -72,13 +72,13 @@ let paren open_ value close =
 %token <Ast.token> GT               (* ">" *)
 %token <Ast.token> GE               (* ">=" *)
 %token <Ast.token> PLUS             (* "+" *)
+%token <Ast.token> PLUS2            (* "++" *)
 %token <Ast.token> MINUS            (* "-" *)
+%token <Ast.token> MINUS2           (* "--" *)
 %token <Ast.token> MUL              (* "*" *)
 %token <Ast.token> DIV              (* "/" *)
 %token <Ast.token> QUO              (* "div" *)
 %token <Ast.token> REM              (* "rem" *)
-%token <Ast.token> LIST_ADD         (* "++" *)
-%token <Ast.token> LIST_DIFF        (* "--" *)
 %token <Ast.token> RARROW           (* "->" *)
 %token <Ast.token> RARROW2          (* "=>" *)
 %token <Ast.token> LARROW           (* "<-" *)
@@ -689,7 +689,7 @@ match_exp:
   | send_exp { $1 }
 
 send_exp:
-  | compare_exp EP send_exp
+  | compare_exp BANG send_exp
   { binexp $1 (locate $2 Ast.Op_ep) $3 }
   | compare_exp { $1 }
 
@@ -712,8 +712,8 @@ list_conc_exp:
   | shift_exp { $1 }
 
 list_conc_op:
-  | LIST_ADD { locate $1 Ast.Op_list_add }
-  | LIST_DIFF { locate $1 Ast.Op_list_diff }
+  | PLUS2 { locate $1 Ast.Op_list_add }
+  | MINUS2 { locate $1 Ast.Op_list_diff }
 
 shift_exp:
   | shift_exp shift_op mul_exp { binexp $1 $2 $3 }

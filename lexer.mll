@@ -77,12 +77,12 @@ rule read =
   | '*'     { MUL (to_loc lexbuf) }
   | '/'     { DIV (to_loc lexbuf) }
   | '='     { EQ (to_loc lexbuf) }
-  | '!'     { EP (to_loc lexbuf) }
+  | '!'     { BANG (to_loc lexbuf) }
   | '?'     { Q (to_loc lexbuf) }
   | '|'     { BAR (to_loc lexbuf) }
   | "||"    { DBAR (to_loc lexbuf) }
-  | "++"    { LIST_ADD (to_loc lexbuf) }
-  | "--"    { LIST_DIFF (to_loc lexbuf) }
+  | "++"    { PLUS2 (to_loc lexbuf) }
+  | "--"    { MINUS2 (to_loc lexbuf) }
   | "->"    { RARROW (to_loc lexbuf) }
   | "=>"    { RARROW2 (to_loc lexbuf) }
   | "<-"    { LARROW (to_loc lexbuf) }

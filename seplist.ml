@@ -38,5 +38,12 @@ let length es =
 let iter es ~f =
   fold_left es ~init:() ~f:(fun _accu sep e -> f sep e)
 
+let iteri es ~f =
+  ignore @@ fold_left es
+    ~init:0
+    ~f:(fun i sep e ->
+        f i sep e;
+        i + 1)
+
 let opt_iter es_opt ~f =
   Option.iter es_opt ~f:(fun es -> iter es ~f)

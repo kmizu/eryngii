@@ -182,11 +182,23 @@ let rec write ctx node =
     text ctx fsig.fun_sig_arity.desc
   in
 
-  let write_fun_sigs fsigs =
-    Seplist.iter fsigs
-      ~f:(fun sep fsig ->
-          write_fun_sig fsig;
-          write_sep sep ", ")
+  let write_fun_sigs fsigs ~indent =
+    let len = Seplist.length fsigs in
+    if len < 3 then
+      Seplist.iter fsigs
+        ~f:(fun sep fsig ->
+            write_fun_sig fsig;
+            write_sep sep ", ")
+    else
+      Seplist.iteri fsigs
+        ~f:(fun i sep fsig ->
+            if i > 0 then begin
+              text ctx @@ String.make indent ' '
+            end;
+            write_fun_sig fsig;
+            write_sep sep ",";
+            if i+1 < len then
+              newline ctx)
   in
 
   let write_pattern ptn =
@@ -278,7 +290,7 @@ let rec write ctx node =
 
   | Export_attr attr ->
     text ctx "-export([";
-    write_fun_sigs attr.export_attr_funs;
+    write_fun_sigs attr.export_attr_funs ~indent:9;
     text ctx "]).";
     newline ctx
 
@@ -286,7 +298,8 @@ let rec write ctx node =
     text ctx "-import(";
     text ctx attr.import_attr_module.desc;
     text ctx ", [";
-    write_fun_sigs attr.import_attr_funs;
+    write_fun_sigs attr.import_attr_funs
+      ~indent:(11 + String.length attr.import_attr_module.desc);
     text ctx "]).";
     newline ctx
 

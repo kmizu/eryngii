@@ -98,6 +98,8 @@ rule read =
   | "bnot"  { LNOT (to_loc lexbuf) }
   | "bor"   { LOR (to_loc lexbuf) }
   | "bxor"  { LXOR (to_loc lexbuf) }
+  | "bsl"   { LSHIFT (to_loc lexbuf) }
+  | "bsr"   { RSHIFT (to_loc lexbuf) }
   | "case"  { CASE (to_loc lexbuf) }
   | "catch" { CATCH (to_loc lexbuf) }
   | "cond"  { COND (to_loc lexbuf) }

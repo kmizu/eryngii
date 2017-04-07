@@ -78,6 +78,11 @@ module Context = struct
       text ctx name.desc;
       text ctx "'"
 
+  let string ctx s =
+    text ctx "\"";
+    text ctx s;
+    text ctx "\""
+
   let rarrow ctx =
     add ctx @@ Op.Text "->"
 
@@ -404,10 +409,7 @@ let rec write ctx node =
     text ctx "'"
 
   | String values ->
-    List.iter values ~f:(fun value ->
-        text ctx "\"";
-        text ctx value.desc;
-        text ctx "\"")
+    List.iter values ~f:(fun value -> string ctx value.desc)
 
   | Tuple tuple ->
     text ctx "{";

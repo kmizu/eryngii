@@ -162,7 +162,6 @@ type t =
   | Try of try_
   | Anon_fun of anon_fun
   | Module_fun of module_fun
-  | Query of t
   | Unexp of (op * t)
   | Binexp of binexp
   | Call of call
@@ -171,7 +170,6 @@ type t =
   | Uscore of text
   | Var of text
   | Atom of atom
-  | Q_atom of text enclosed
   | Char of text
   | String of text list
   | Int of text

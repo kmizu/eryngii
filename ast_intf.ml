@@ -165,7 +165,6 @@ type t =
   | Unexp of (op * t)
   | Binexp of binexp
   | Call of call
-  | Qual of text * text (* atom '.' atom *)
   | Paren of t enclosed
   | Uscore of text
   | Var of text

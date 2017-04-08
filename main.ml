@@ -10,24 +10,37 @@ let file_exists file =
     exit (-1)
   | `Yes -> ()
 
-let parse_file file =
-  file_exists file;
-  In_channel.with_file file
-    ~f:(fun chan ->
-        let buf = Lexing.from_channel chan in
-        try begin
-          Parser.prog Lexer.read buf
-        end with
-        | Lexer.Syntax_error (pos, msg) ->
-          let open Position in
-          printf "Line %d, column %d: %s\n" pos.line pos.col msg;
-          exit (-1)
-        | Parser.Error ->
-          let pos = Lexing.lexeme_start_p buf in
-          printf "Line %d, column %d: Invalid syntax\n"
-            pos.pos_lnum (pos.pos_cnum-pos.pos_bol+1);
-          exit (-1)
-        | e -> raise e)
+let parse_file file ~f =
+  match file with
+  | None ->
+    Printf.printf "Error: No input files";
+    exit 1
+  | Some file ->
+    file_exists file;
+    In_channel.with_file file
+      ~f:(fun chan ->
+          let buf = Lexing.from_channel chan in
+          try begin
+            f @@ Parser.prog Lexer.read buf
+          end with
+          | Lexer.Syntax_error (pos, msg) ->
+            let open Position in
+            printf "Line %d, column %d: %s\n" pos.line pos.col msg;
+            exit (-1)
+          | Parser.Error ->
+            let pos = Lexing.lexeme_start_p buf in
+            printf "Line %d, column %d: Invalid syntax\n"
+              pos.pos_lnum (pos.pos_cnum-pos.pos_bol+1);
+            exit (-1)
+          | e -> raise e)
+
+let run file ~f =
+  match file with
+  | Some file ->
+    f @@ parse_file file
+  | None ->
+    Printf.printf "Error: No input files";
+    exit 1
 
 let fmt =
   Command.basic
@@ -38,15 +51,11 @@ let fmt =
       +> flag "-v" no_arg ~doc:" print verbose message"
       +> anon (maybe ("filename" %: string))
     )
-    (fun debug verbose file_opt () ->
-       match file_opt with
-       | Some file ->
-         let node = parse_file file in
-         let fmt = Formatter.format node in
-         printf "%s\n" fmt
-       | None ->
-         Printf.printf "Error: No input files";
-         exit 1)
+    (fun debug verbose file () ->
+       parse_file file
+         ~f:(fun node ->
+             let fmt = Formatter.format node in
+             printf "%s\n" fmt))
 
 let syntax =
   Command.basic
@@ -57,13 +66,8 @@ let syntax =
       +> flag "-v" no_arg ~doc:" print verbose message"
       +> anon (maybe ("filename" %: string))
     )
-    (fun debug verbose file_opt () ->
-       match file_opt with
-       | Some file ->
-         ignore @@ parse_file file
-       | None ->
-         Printf.printf "Error: No input files";
-         exit 1)
+    (fun debug verbose file () ->
+       parse_file file ~f:ignore)
 
 let main =
   Command.group

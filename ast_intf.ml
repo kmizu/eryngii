@@ -10,6 +10,11 @@ type 'a enclosed_lit = [`Unenclosed of 'a | `Enclosed of 'a]
 
 type atom = text enclosed_lit
 
+let text_of_atom atom =
+  match atom with
+  | `Unenclosed text
+  | `Enclosed text -> text
+
 type 'a enclosed = {
   enc_open : token;
   enc_desc : 'a;

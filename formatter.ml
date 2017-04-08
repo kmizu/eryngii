@@ -277,7 +277,7 @@ let rec write ctx node =
 
   (* write comments *)
   let start_pos = Ast.start_pos node in
-  Option.iter start_pos ~f:(write_comment ctx);
+  write_comment ctx start_pos;
 
   match node with
   | Module m -> iter m.module_decls

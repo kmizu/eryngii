@@ -10,6 +10,20 @@ let one e = Cons (e, Nil)
 
 let cons e ~sep es = Cons (e, Cons (sep, es))
 
+let hd = function
+  | Nil -> None
+  | Cons (e, _) -> Some e
+
+let hd_exn es = Option.value_exn (hd es)
+
+let tl es =
+  match es with
+  | Nil -> None
+  | Cons (_, Nil) -> Some (None, es)
+  | Cons (_, Cons (sep, es)) -> Some (Some sep, es)
+
+let tl_exn es = Option.value_exn (tl es)
+
 let rev es =
   let rec f es accu =
     match es with

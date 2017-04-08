@@ -291,11 +291,11 @@ and define_attr = {
 }
 
 and behav_attr = {
-  behav_tag : text;
-  behav_open : token;
-  behav_name : text;
-  behav_close : token;
-  behav_dot : token;
+  behav_attr_tag : text;
+  behav_attr_open : token;
+  behav_attr_name : text;
+  behav_attr_close : token;
+  behav_attr_dot : token;
 }
 
 and record_attr = {

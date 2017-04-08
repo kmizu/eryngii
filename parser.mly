@@ -577,11 +577,11 @@ opaque_attr:
 behav_attr:
   | BEHAV_ATTR LPAREN LIDENT RPAREN DOT
   { Ast.Behav_attr {
-      behav_tag = $1;
-      behav_open = $2;
-      behav_name = $3;
-      behav_close = $4;
-      behav_dot = $5;
+      behav_attr_tag = $1;
+      behav_attr_open = $2;
+      behav_attr_name = $3;
+      behav_attr_close = $4;
+      behav_attr_dot = $5;
     }
   }
 

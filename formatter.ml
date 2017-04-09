@@ -549,5 +549,5 @@ let format contents node =
   iterln fmt.fmt_decls;
 
   Op.write buf @@ Context.contents ctx;
-  Buffer.contents buf
+  String.strip @@ Buffer.contents buf
 

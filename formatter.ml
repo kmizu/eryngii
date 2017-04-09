@@ -121,8 +121,7 @@ let format_comment s =
   let body' = String.lstrip body
       ~drop:(fun c -> Option.is_some @@ String.index " \t\r\n" c)
   in
-  let prefix = String.make (String.length s - String.length body) '%' in
-  prefix ^ " " ^ body'
+  "%% " ^ body'
 
 let write_comment ctx pos =
   let open Context in

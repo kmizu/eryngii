@@ -123,10 +123,7 @@ let paren open_ value close =
 %%
 
 prog:
-  | module_
-  { Annot.finish ();
-    $1
-  }
+  | module_ { $1 }
 
 module_:
   | EOF

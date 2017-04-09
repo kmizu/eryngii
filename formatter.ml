@@ -488,7 +488,6 @@ type formatted = {
   fmt_include : Ast.t list;
   fmt_define : Ast.t list;
   fmt_type : Ast.t list;
-  fmt_attrs : Ast.t list;
   fmt_decls : Ast.t list;
 }
 
@@ -505,12 +504,9 @@ let restruct_decls decls =
             fmt_include = [];
             fmt_define = [];
             fmt_type = [];
-            fmt_attrs = [];
             fmt_decls = [] }
     ~f:(fun attrs decl ->
         match decl with
-        | Module_attr attr ->
-          { attrs with fmt_attrs = decl :: attrs.fmt_attrs }
         | Modname_attr attr ->
           { attrs with fmt_mod_name = decl :: attrs.fmt_mod_name }
         | Behav_attr attr ->
@@ -545,7 +541,6 @@ let restruct node =
       fmt_include = List.rev fmt.fmt_include;
       fmt_define = List.rev fmt.fmt_define;
       fmt_type = List.rev fmt.fmt_type;
-      fmt_attrs = List.rev fmt.fmt_attrs;
       fmt_decls = List.rev fmt.fmt_decls;
     }
   | _ -> failwith "must be module node"
@@ -573,7 +568,6 @@ let format contents node =
   iterln fmt.fmt_include;
   iterln fmt.fmt_define;
   iterln fmt.fmt_type;
-  iterln fmt.fmt_attrs;
   iterln fmt.fmt_decls;
 
   Op.write buf @@ Context.contents ctx;

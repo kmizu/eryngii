@@ -309,6 +309,12 @@ let rec write ctx node =
     text ctx ").";
     newline ctx
 
+  | Behav_attr attr ->
+    text ctx "-behaviour(";
+    text ctx attr.behav_attr_name.desc;
+    text ctx ").";
+    newline ctx
+
   | Export_attr attr ->
     text ctx "-export([";
     write_fun_sigs attr.export_attr_funs ~indent:9;

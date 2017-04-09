@@ -35,7 +35,7 @@ module Context = struct
     buf : Buffer.t;
     mutable ops : Op.t list;
     mutable indent_lv : int;
-    mutable used_comments : Annot.t list;
+    mutable used_comments : Ast.text list;
   }
 
   let create lines buf =
@@ -105,6 +105,16 @@ module Context = struct
   let dedent ctx =
     ctx.indent_lv <- ctx.indent_lv - 1
 
+  let use_comment ctx com = 
+    if List.existsi ctx.used_comments
+        ~f:(fun _ used ->
+            Location.(start_line_exn com = start_line_exn used)) then
+      `Used
+    else begin
+      ctx.used_comments <- com :: ctx.used_comments;
+      `Unused
+    end
+
 end
 
 let format_comment s =
@@ -126,13 +136,20 @@ let write_comment ctx pos =
       ~init:(Array.length all - 1, true, [])
       ~f:(fun annot (i, cont, accu) ->
           let i' = i - 1 in
-          if not (cont && i < pos.line) then
+          if not cont then
+            (i', false, accu)
+          else if not (cont && i < pos.line) then
             (i', true, accu)
           else begin
             match Annot.comment i with
             | Some text ->
-              let s = format_comment @@ text.desc in
-              (i', true, s :: accu)
+              begin match use_comment ctx text with
+                | `Used ->
+                  (i', true, accu)
+                | `Unused ->
+                  let s = format_comment @@ text.desc in
+                  (i', true, s :: accu)
+              end
             | None ->
               let line = String.strip @@ Array.get ctx.lines i in
               if String.is_empty line then
@@ -145,7 +162,8 @@ let write_comment ctx pos =
   in
   List.iter comments ~f:(fun comment ->
       text ctx comment;
-      newline ctx)
+      newline ctx;
+      indent_spaces ctx)
 
 let rec write ctx node =
   let open Ast_intf in

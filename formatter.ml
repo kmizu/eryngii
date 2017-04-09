@@ -296,6 +296,43 @@ let rec write ctx node =
     | Op_rshift -> "bsr"
   in
 
+  let rec write_spec_type ty =
+    let open Spec_type in
+    match ty with
+    | Atom (`Unenclosed name) ->
+      text ctx name.desc
+    | Atom (`Enclosed name) ->
+      text ctx "'";
+      text ctx name.desc;
+      text ctx "'"
+    | Int value ->
+      text ctx value.desc
+    | Nil ->
+      text ctx "[]"
+    | List ty ->
+      text ctx "[";
+      Option.iter ty.enc_desc ~f:write_spec_type;
+      text ctx "]";
+    | Named named ->
+      text ctx named.named_name.desc;
+      text ctx "(";
+      Seplist.opt_iter named.named_args ~f:(fun sep arg ->
+          write_spec_type arg;
+          write_sep sep ", ");
+      text ctx ")"
+    | Constraint constr ->
+      text ctx constr.constr_name.desc;
+      text ctx " :: ";
+      write_spec_type constr.constr_type
+    | _ -> ()
+  in
+
+  let write_spec_args spec_args = 
+    Seplist.opt_iter spec_args ~f:(fun sep arg ->
+        write_spec_type arg;
+        write_sep sep ", ")
+  in
+
   (* write comments *)
   let start_pos = Ast.start_pos node in
   write_comment ctx start_pos;
@@ -351,33 +388,6 @@ let rec write ctx node =
     newline ctx
 
   | Spec_attr attr ->
-    let rec write_spec_type ty =
-      let open Spec_type in
-      match ty with
-      | Atom (`Unenclosed name) ->
-        text ctx name.desc
-      | Atom (`Enclosed name) ->
-        text ctx "'";
-        text ctx name.desc;
-        text ctx "'"
-      | Int value ->
-        text ctx value.desc
-      | Nil ->
-        text ctx "[]"
-      | List ty ->
-        text ctx "[";
-        Option.iter ty.enc_desc ~f:write_spec_type;
-        text ctx "]";
-      | Named named ->
-        text ctx named.named_name.desc;
-        text ctx "(";
-        Seplist.opt_iter named.named_args ~f:(fun sep arg ->
-            write_spec_type arg;
-            write_sep sep ", ");
-        text ctx ")"
-      | _ -> ()
-    in
-
     text ctx "-spec ";
     begin match attr.spec_attr_mname with
       | None -> ()
@@ -389,9 +399,7 @@ let rec write ctx node =
     Seplist.iter attr.spec_attr_clauses
       ~f:(fun sep clause ->
           text ctx "(";
-          Seplist.opt_iter clause.spec_clause_args ~f:(fun sep arg ->
-              write_spec_type arg;
-              write_sep sep ", "); 
+          write_spec_args clause.spec_clause_args;
           text ctx ") -> ";
           write_spec_type clause.spec_clause_return;
           write_sep sep ";");

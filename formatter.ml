@@ -405,6 +405,15 @@ let rec write ctx node =
           write_sep sep ";");
     dot_newline ctx
 
+  | Type_attr attr ->
+    text ctx "-type ";
+    text ctx attr.type_attr_name.desc;
+    text ctx "(";
+    write_spec_args attr.type_attr_args;
+    text ctx ") :: ";
+    write_spec_type attr.type_attr_type;
+    dot_newline ctx
+
   | Flow_macro_attr attr ->
     text ctx "-";
     text ctx (match attr.flow_macro_attr_tag_type with

@@ -30,6 +30,7 @@ module Spec_type = struct
     | Nil (* TODO: remove *)
     | Named of named
     | List of t option enclosed
+    | Tuple of tuple
     | Fun of fun_
     | Map of map
     | Record of record
@@ -49,6 +50,12 @@ module Spec_type = struct
     named_open : token;
     named_args : t node_list option;
     named_close : token;
+  }
+
+  and tuple = {
+    tuple_open: token;
+    tuple_elts: t node_list option;
+    tuple_close : token;
   }
 
   and fun_ = {

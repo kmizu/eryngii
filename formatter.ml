@@ -1,15 +1,6 @@
 open Core.Std
 open Located
 
-module Comment = struct
-
-  type t = {
-    text : Ast.text;
-    mutable used : bool;
-  }
-
-end
-
 module Op = struct
 
   type t =

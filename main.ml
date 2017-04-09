@@ -21,7 +21,14 @@ let parse_file file ~f =
       ~f:(fun chan ->
           let buf = Lexing.from_channel chan in
           try begin
-            f @@ Parser.prog Lexer.read buf
+            let lines =
+              In_channel.create file
+              |> In_channel.input_all
+              |> String.split_lines
+            in
+            Annot.init @@ List.length lines;
+            let node = Parser.prog Lexer.read buf in
+            f lines node
           end with
           | Lexer.Syntax_error (pos, msg) ->
             let open Position in
@@ -34,14 +41,6 @@ let parse_file file ~f =
             exit (-1)
           | e -> raise e)
 
-let run file ~f =
-  match file with
-  | Some file ->
-    f @@ parse_file file
-  | None ->
-    Printf.printf "Error: No input files";
-    exit 1
-
 let fmt =
   Command.basic
     ~summary: "formats a source file"
@@ -53,8 +52,8 @@ let fmt =
     )
     (fun debug verbose file () ->
        parse_file file
-         ~f:(fun node ->
-             let fmt = Formatter.format node in
+         ~f:(fun lines node ->
+             let fmt = Formatter.format lines node in
              printf "%s\n" fmt))
 
 let syntax =
@@ -67,7 +66,7 @@ let syntax =
       +> anon (maybe ("filename" %: string))
     )
     (fun debug verbose file () ->
-       parse_file file ~f:ignore)
+       parse_file file ~f:(fun _ _ -> ()))
 
 let test_format =
   Command.basic
@@ -81,7 +80,7 @@ let test_format =
     (fun verbose expected actual () ->
        Conf.verbose_mode := verbose;
        parse_file (Some actual)
-         ~f:(fun node ->
+         ~f:(fun lines node ->
              let rec compare i ex_lines ac_lines =
                match ex_lines, ac_lines with
                | [], _
@@ -104,9 +103,13 @@ let test_format =
                    exit 1
                  end
              in
-             let ac = Formatter.format node in
-             let ex = In_channel.create expected |> In_channel.input_all in
-             compare 0 (String.split_lines ex) (String.split_lines ac)))
+             let ac = Formatter.format lines node |> String.split_lines in
+             let ex =
+               In_channel.create expected
+               |> In_channel.input_all
+               |> String.split_lines
+             in
+             compare 0 ex ac))
 
 let main =
   Command.group

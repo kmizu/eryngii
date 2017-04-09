@@ -40,22 +40,19 @@ end
 module Context = struct
 
   type t = {
+    lines : string array;
     buf : Buffer.t;
     mutable ops : Op.t list;
     mutable indent_lv : int;
-    mutable comments : Comment.t list;
+    mutable used_comments : Annot.t list;
   }
 
-  let create buf =
-    let comments = List.filter_map !Annot.all_annots
-        ~f:(fun annot ->
-            match annot with
-            | Comment text -> Some ({ Comment.text = text; used = false }))
-    in
-    { buf;
+  let create lines buf =
+    { lines = Array.of_list lines;
+      buf;
       ops = [];
       indent_lv = 0;
-      comments;
+      used_comments = [];
     }
 
   let contents ctx =
@@ -132,14 +129,31 @@ let write_comment ctx pos =
   let open Located in
   let open Location in
   let open Position in
-  let comments = List.filter ctx.comments
-      ~f:(fun com ->
-          let start = (Option.value_exn com.text.loc).start in
-          not com.used && start.line < pos.line)
+
+  let all = Annot.all_annots () in
+  let _, _, comments = Array.fold_right all
+      ~init:(Array.length all - 1, true, [])
+      ~f:(fun annot (i, cont, accu) ->
+          let i' = i - 1 in
+          if not (cont && i < pos.line) then
+            (i', true, accu)
+          else begin
+            match Annot.comment i with
+            | Some text ->
+              let s = format_comment @@ text.desc in
+              (i', true, s :: accu)
+            | None ->
+              let line = String.strip @@ Array.get ctx.lines i in
+              if String.is_empty line then
+                (i', true, "" :: accu)
+              else if not (String.is_prefix line ~prefix:"%") then
+                (i', false, accu)
+              else
+                failwith "must not be executed"
+          end)
   in
-  List.iter comments ~f:(fun com ->
-      com.used <- true;
-      text ctx @@ format_comment com.text.desc;
+  List.iter comments ~f:(fun comment ->
+      text ctx comment;
       newline ctx)
 
 let rec write ctx node =
@@ -503,9 +517,9 @@ let restruct node =
     }
   | _ -> failwith "must be module node"
 
-let format node =
+let format contents node =
   let buf = Buffer.create 2000 in
-  let ctx = Context.create buf in
+  let ctx = Context.create contents buf in
   let fmt = restruct node in
 
   let iter nodes =

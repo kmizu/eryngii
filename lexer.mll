@@ -5,6 +5,8 @@ open Parser
 exception Syntax_error of Position.t * string
 
 let to_pos pos lexbuf =
+  (* reset line number of Lexing.position zero-based *)
+  let pos = { pos with pos_lnum = pos.pos_lnum - 1 } in
   Position.of_lexing_pos pos
 
 let start_pos lexbuf =

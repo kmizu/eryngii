@@ -474,10 +474,14 @@ let rec write ctx node =
 
 type formatted = {
   fmt_mod_name: Ast.t list;
+  fmt_behav : Ast.t list;
   fmt_export : Ast.t list;
+  fmt_export_type : Ast.t list;
   fmt_import : Ast.t list;
-  fmt_include : Ast.t list;
   fmt_inclib : Ast.t list;
+  fmt_include : Ast.t list;
+  fmt_define : Ast.t list;
+  fmt_type : Ast.t list;
   fmt_attrs : Ast.t list;
   fmt_decls : Ast.t list;
 }
@@ -487,10 +491,14 @@ let restruct_decls decls =
   List.fold_left
     decls
     ~init:{ fmt_mod_name = [];
+            fmt_behav = [];
             fmt_export = [];
+            fmt_export_type = [];
             fmt_import = [];
-            fmt_include = [];
             fmt_inclib = [];
+            fmt_include = [];
+            fmt_define = [];
+            fmt_type = [];
             fmt_attrs = [];
             fmt_decls = [] }
     ~f:(fun attrs decl ->
@@ -499,14 +507,22 @@ let restruct_decls decls =
           { attrs with fmt_attrs = decl :: attrs.fmt_attrs }
         | Modname_attr attr ->
           { attrs with fmt_mod_name = decl :: attrs.fmt_mod_name }
+        | Behav_attr attr ->
+          { attrs with fmt_behav = decl :: attrs.fmt_behav }
         | Export_attr attr ->
           { attrs with fmt_export = decl :: attrs.fmt_export }
+        | Export_type_attr attr ->
+          { attrs with fmt_export_type = decl :: attrs.fmt_export_type }
         | Import_attr attr ->
           { attrs with fmt_import = decl :: attrs.fmt_import }
-        | Include_attr attr ->
-          { attrs with fmt_include = decl :: attrs.fmt_include }
         | Inclib_attr attr ->
           { attrs with fmt_inclib = decl :: attrs.fmt_inclib }
+        | Include_attr attr ->
+          { attrs with fmt_include = decl :: attrs.fmt_include }
+        | Define_attr attr ->
+          { attrs with fmt_define = decl :: attrs.fmt_define }
+        | Type_attr attr ->
+          { attrs with fmt_type = decl :: attrs.fmt_type }
         | _ -> { attrs with fmt_decls = decl :: attrs.fmt_decls })
 
 let restruct node =
@@ -515,10 +531,14 @@ let restruct node =
   | Module m ->
     let fmt = restruct_decls m.module_decls in
     { fmt_mod_name = List.rev fmt.fmt_mod_name;
+      fmt_behav = List.rev fmt.fmt_behav;
       fmt_export = List.rev fmt.fmt_export;
+      fmt_export_type = List.rev fmt.fmt_export_type;
       fmt_import = List.rev fmt.fmt_import;
-      fmt_include = List.rev fmt.fmt_include;
       fmt_inclib = List.rev fmt.fmt_inclib;
+      fmt_include = List.rev fmt.fmt_include;
+      fmt_define = List.rev fmt.fmt_define;
+      fmt_type = List.rev fmt.fmt_type;
       fmt_attrs = List.rev fmt.fmt_attrs;
       fmt_decls = List.rev fmt.fmt_decls;
     }
@@ -539,10 +559,14 @@ let format contents node =
   in
 
   iterln fmt.fmt_mod_name;
+  iterln fmt.fmt_behav;
   iterln fmt.fmt_export;
+  iterln fmt.fmt_export_type;
   iterln fmt.fmt_import;
-  iterln fmt.fmt_include;
   iterln fmt.fmt_inclib;
+  iterln fmt.fmt_include;
+  iterln fmt.fmt_define;
+  iterln fmt.fmt_type;
   iterln fmt.fmt_attrs;
   iterln fmt.fmt_decls;
 

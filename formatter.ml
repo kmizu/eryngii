@@ -7,7 +7,6 @@ module Op = struct
     | Nop
     | Indent
     | Dedent
-    | Comment of string
     | Text of string
     | Space of int
     | Newline

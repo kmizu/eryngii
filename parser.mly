@@ -117,6 +117,7 @@ let paren open_ value close =
 %nonassoc COLON
 
 %left BAR
+%nonassoc COLON2
 
 %start <Ast.t> prog
 
@@ -337,6 +338,13 @@ spec_arg:
 
   (* TODO *)
 spec_type:
+  | UIDENT COLON2 spec_type
+  { Ast.Spec_type.Constraint {
+      constr_name = $1;
+      constr_colon = $2;
+      constr_type = $3;
+    }
+  }
   | raw_atom { Ast.Spec_type.Atom $1 }
   | spec_type_named { $1 }
   | INT { Ast.Spec_type.Int $1 }

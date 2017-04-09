@@ -34,6 +34,7 @@ module Spec_type = struct
     | Map of map
     | Record of record
     | Union of union
+    | Constraint of constr
 
   and range = {
     range_start : text;
@@ -99,6 +100,13 @@ module Spec_type = struct
     union_op : token;
     union_right : t;
   }
+
+  and constr = {
+    constr_name : text;
+    constr_colon : token;
+    constr_type : t;
+  }
+
 
 end
 

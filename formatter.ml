@@ -153,7 +153,7 @@ let write_comment ctx pos =
             | None ->
               let line = String.strip @@ Array.get ctx.lines i in
               if String.is_empty line then
-                (i', true, "" :: accu)
+                (i', true, accu)
               else if not (String.is_prefix line ~prefix:"%") then
                 (i', false, accu)
               else

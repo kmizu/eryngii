@@ -333,6 +333,16 @@ let rec write ctx node =
         write_sep sep ", ")
   in
 
+  let write_def_name name =
+    text ctx name.def_name.desc;
+    Option.iter name.def_args ~f:(fun args ->
+        text ctx "(";
+        Seplist.iter args.enc_desc ~f:(fun sep arg ->
+            text ctx @@ Naming.uppercase arg.desc;
+            write_sep sep ", ");
+        text ctx ")")
+  in
+
   (* write comments *)
   let start_pos = Ast.start_pos node in
   write_comment ctx start_pos;
@@ -381,7 +391,8 @@ let rec write ctx node =
 
   | Define_attr attr ->
     text ctx "-define(";
-    text ctx @@ Naming.uppercase attr.def_attr_name.desc;
+    (*text ctx @@ Naming.uppercase attr.def_attr_name.desc;*)
+    write_def_name attr.def_attr_name;
     text ctx ", ";
     write ctx attr.def_attr_value;
     text ctx ").";

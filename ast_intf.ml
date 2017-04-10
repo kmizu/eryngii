@@ -6,6 +6,8 @@ type 'a node_list = ('a, token) Seplist.t
 
 type text = string Located.t
 
+type text_list = (text, token) Seplist.t
+
 type 'a enclosed_lit = [`Unenclosed of 'a | `Enclosed of 'a]
 
 type atom = text enclosed_lit
@@ -304,11 +306,16 @@ and type_attr = {
 and define_attr = {
   def_attr_tag : text;
   def_attr_open : token;
-  def_attr_name : text;
+  def_attr_name : define_name;
   def_attr_comma : token;
   def_attr_value : t;
   def_attr_close : token;
   def_attr_dot : token;
+}
+
+and define_name = {
+  def_name : text;
+  def_args : text_list enclosed option;
 }
 
 and behav_attr = {

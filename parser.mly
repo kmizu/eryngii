@@ -251,7 +251,7 @@ include_lib_attr:
   }
 
 define_attr:
-  | DEFINE_ATTR LPAREN UIDENT COMMA exp RPAREN DOT
+  | DEFINE_ATTR LPAREN define_name COMMA exp RPAREN DOT
   { Ast.Define_attr {
       def_attr_tag = $1;
       def_attr_open = $2;
@@ -262,6 +262,25 @@ define_attr:
       def_attr_dot = $7;
     }
   }
+
+define_name:
+  | macro_name { { Ast.def_name = $1; def_args = None } }
+  | macro_name LPAREN define_args RPAREN
+  { { Ast.def_name = $1;
+      def_args = Some (Ast.enclose $2 $3 $4);
+    }
+  }
+
+define_args:
+  | rev_define_args { Seplist.rev $1 }
+
+rev_define_args:
+  | define_arg { Seplist.one $1 }
+  | rev_define_args SEMI define_arg { Seplist.cons $3 ~sep:$2 $1 }
+
+define_arg:
+  | UIDENT { $1 }
+  | ATOM { $1 }
 
 spec_attr:
   | SPEC_ATTR LIDENT spec_clauses DOT

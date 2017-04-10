@@ -188,11 +188,16 @@ let rec write ctx node =
     write_seplist exp_list ", "
   in
 
+  let write_guard guard =
+    (* TODO *)
+    ()
+  in
+
   let write_when_guard w guard =
     match (w, guard) with
     | Some w, Some guard ->
       text ctx "when ";
-      write_seplist guard ", ";
+      write_guard guard;
       text ctx " "
     | _ -> ()
   in

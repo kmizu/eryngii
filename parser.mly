@@ -771,8 +771,15 @@ guard:
   | rev_guard { Seplist.rev $1 }
 
 rev_guard:
+  | guard_clauses { Seplist.one $1 }
+  | rev_guard SEMI guard_clauses { Seplist.cons $3 ~sep:$2 $1 }
+
+guard_clauses:
+  | rev_guard_clauses { Seplist.rev $1 }
+
+rev_guard_clauses:
   | exp { Seplist.one $1 }
-  | rev_guard COMMA exp { Seplist.cons $3 ~sep:$2 $1 }
+  | rev_guard_clauses COMMA exp { Seplist.cons $3 ~sep:$2 $1 }
 
 body:
   | exps { $1 }

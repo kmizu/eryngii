@@ -359,6 +359,20 @@ spec_type:
   { Ast.(Spec_type.List (enclose $1 None $2)) }
   | LBRACK spec_type RBRACK
   { Ast.(Spec_type.List (enclose $1 (Some $2) $3)) }
+  | LBRACE RBRACE
+  { Ast.Spec_type.Tuple {
+      tuple_open = $1;
+      tuple_elts = None;
+      tuple_close = $2;
+    }
+  }
+  | LBRACE spec_type_args RBRACE
+  { Ast.Spec_type.Tuple {
+      tuple_open = $1;
+      tuple_elts = Some $2;
+      tuple_close = $3;
+    }
+  }
 
   (* TODO *)
   | DLT DGT { Ast.Spec_type.Nil}

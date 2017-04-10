@@ -982,6 +982,7 @@ macro:
 macro_name:
   | UIDENT { $1 }
   | LIDENT { $1 }
+  | ATOM { $1 }
 
 var:
   | UIDENT { Ast.Var $1 }

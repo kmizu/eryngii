@@ -24,6 +24,7 @@ type 'a enclosed = {
 module Spec_type = struct
 
   type t =
+    | Paren of t enclosed
     | Atom of atom
     | Int of text
     | Range of range

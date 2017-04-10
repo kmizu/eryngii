@@ -338,6 +338,8 @@ spec_arg:
 
   (* TODO *)
 spec_type:
+  | LPAREN spec_type RPAREN
+  { Ast.(Spec_type.Paren (enclose $1 $2 $3)) }
   | UIDENT COLON2 spec_type
   { Ast.Spec_type.Constraint {
       constr_name = $1;

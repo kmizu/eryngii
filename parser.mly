@@ -626,6 +626,19 @@ behav_attr:
   }
 
 record_attr:
+  | RECORD_ATTR LPAREN LIDENT COMMA LBRACE RBRACE RPAREN DOT
+  { Ast.Record_attr {
+      rec_attr_tag = $1;
+      rec_attr_open = $2;
+      rec_attr_name = $3;
+      rec_attr_comma = $4;
+      rec_attr_rec_open = $5;
+      rec_attr_fields = None;
+      rec_attr_rec_close = $6;
+      rec_attr_close = $7;
+      rec_attr_dot = $8;
+    }
+  }
   | RECORD_ATTR LPAREN LIDENT COMMA LBRACE type_fields RBRACE RPAREN DOT
   { Ast.Record_attr {
       rec_attr_tag = $1;
@@ -633,7 +646,7 @@ record_attr:
       rec_attr_name = $3;
       rec_attr_comma = $4;
       rec_attr_rec_open = $5;
-      rec_attr_fields = $6;
+      rec_attr_fields = Some $6;
       rec_attr_rec_close = $7;
       rec_attr_close = $8;
       rec_attr_dot = $9;

@@ -112,4 +112,4 @@ let rec start_pos node =
   | Char value
   | Int value
   | Float value -> of_text value
-  | Nop -> failwith "notimpl"
+  | Nop -> Position.zero

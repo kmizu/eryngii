@@ -289,7 +289,7 @@ and spec_clause = {
   spec_clause_close : token;
   spec_clause_arrow : token;
   spec_clause_return : Spec_type.t;
-  spec_clause_guard : (token * exp_list) option;
+  spec_clause_guard : (token * guard) option;
 }
 
 and type_attr = {
@@ -332,7 +332,7 @@ and record_attr = {
   rec_attr_name : text;
   rec_attr_comma : token;
   rec_attr_rec_open : token;
-  rec_attr_fields : Spec_type.field node_list;
+  rec_attr_fields : Spec_type.field node_list option;
   rec_attr_rec_close : token;
   rec_attr_close : token;
   rec_attr_dot : token;
@@ -365,7 +365,7 @@ and fun_clause = {
   fun_clause_ptns : exp_list;
   fun_clause_close : token;
   fun_clause_when : token option;
-  fun_clause_guard : exp_list option;
+  fun_clause_guard : guard option;
   fun_clause_arrow : token;
   fun_clause_body : exp_list;
 }
@@ -377,7 +377,7 @@ and if_ = {
 }
 
 and if_clause = {
-  if_clause_guard : exp_list;
+  if_clause_guard : guard;
   if_clause_arrow : token;
   if_clause_body : exp_list;
 }
@@ -393,7 +393,7 @@ and case = {
 and cr_clause = {
   cr_clause_ptn : t;
   cr_clause_when : token option;
-  cr_clause_guard : exp_list;
+  cr_clause_guard : guard;
   cr_clause_arrow : token;
   cr_clause_body : exp_list;
 }
@@ -434,7 +434,7 @@ and try_catch_after = {
 and try_clause = {
   try_clause_exn : (t * token) option;
   try_clause_exp : t;
-  try_clause_guard : exp_list option;
+  try_clause_guard : guard option;
   try_clause_body : exp_list;
 }
 
@@ -452,6 +452,8 @@ and module_fun = {
   module_fun_slash : token;
   module_fun_arity : t;
 }
+
+and guard = exp_list node_list
 
 and fun_name = {
   fun_name_mname : t option;

@@ -414,8 +414,9 @@ and recv_after = {
 
 and try_ = {
   try_begin : token;
+  try_exps : exp_list; 
   try_of : token option;
-  try_clauses : try_clause node_list option;
+  try_clauses : cr_clause node_list option;
   try_catch : try_catch;
 }
 
@@ -432,9 +433,10 @@ and try_catch_after = {
 }
 
 and try_clause = {
-  try_clause_exn : (t * token) option;
+  try_clause_exn : (atom * token) option;
   try_clause_exp : t;
-  try_clause_guard : guard option;
+  try_clause_guard : (token * guard) option;
+  try_clause_arrow : token;
   try_clause_body : exp_list;
 }
 

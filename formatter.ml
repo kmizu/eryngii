@@ -178,14 +178,18 @@ let rec write ctx node =
     | Some _ -> text ctx sep
   in
 
-  let write_seplist seplist sep =
+  let write_seplist ?(split=false) seplist sep =
     Seplist.iter seplist ~f:(fun sep_opt node ->
+        if split then
+          indent_spaces ctx;
         write ctx node;
-        write_sep sep_opt sep)
+        write_sep sep_opt sep;
+        if split then
+          newline ctx)
   in
 
-  let write_exp_list exp_list =
-    write_seplist exp_list ", "
+  let write_exp_list ?split exp_list =
+    write_seplist ?split exp_list ", "
   in
 
   let write_guard guard =
@@ -259,7 +263,10 @@ let rec write ctx node =
   in
 
   let write_fun_name name =
-    Option.iter name.fun_name_mname ~f:(write ctx);
+    Option.iter name.fun_name_mname
+      ~f:(fun mname ->
+          write ctx mname;
+          text ctx ":");
     write ctx name.fun_name_fname
   in
 
@@ -464,6 +471,38 @@ let rec write ctx node =
     text ctx ".";
     newlines ctx;
     dedent ctx
+
+  | Try try_ ->
+    text ctx "try";
+    newline ctx;
+    indent ctx;
+    write_exp_list ~split:true try_.try_exps;
+    Option.iter try_.try_of ~f:(fun _ -> text ctx " of ");
+    dedent ctx;
+    let catch = try_.try_catch in
+    Option.iter catch.try_catch_clauses ~f:(fun clauses ->
+        indent_spaces ctx;
+        text ctx "catch";
+        newline ctx;
+        indent ctx;
+        Seplist.iter clauses ~f:(fun sep clause ->
+            indent_spaces ctx;
+            Option.iter clause.try_clause_exn
+              ~f:(fun (exn, _) ->
+                  atom ctx exn;
+                  text ctx ":");
+            write ctx clause.try_clause_exp;
+            Option.iter clause.try_clause_guard ~f:(fun (_when, guard) ->
+                text ctx " when ";
+                write_guard guard);
+            text ctx " ->";
+            newline ctx;
+            indent ctx;
+            write_exp_list ~split:true clause.try_clause_body;
+            dedent ctx);
+        dedent ctx);
+    indent_spaces ctx;
+    text ctx "end"
 
   | Call call ->
     write_fun_name call.call_fname;

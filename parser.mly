@@ -1360,8 +1360,24 @@ integer_or_var:
   | var { $1 }
 
 try_exp:
-  | TRY exps OF cr_clauses try_catch { Ast.Nop }
-  | TRY exps try_catch { Ast.Nop }
+  | TRY exps OF cr_clauses try_catch
+  { Ast.Try {
+      try_begin = $1;
+      try_exps = $2;
+      try_of = Some $3;
+      try_clauses = Some $4;
+      try_catch = $5;
+    }
+  }
+  | TRY exps try_catch
+  { Ast.Try {
+      try_begin = $1;
+      try_exps = $2;
+      try_of = None;
+      try_clauses = None;
+      try_catch = $3;
+    }
+  }
 
 try_catch:
   | CATCH try_clauses END
@@ -1400,23 +1416,27 @@ try_clause:
   { { Ast.try_clause_exn = None;
         try_clause_exp = $1;
         try_clause_guard = None;
+        try_clause_arrow = $2;
         try_clause_body = $3; }
   }
   | primary_exp WHEN guard RARROW body
   { { Ast.try_clause_exn = None;
         try_clause_exp = $1;
-        try_clause_guard = Some $3;
+        try_clause_guard = Some ($2, $3);
+        try_clause_arrow = $4;
         try_clause_body = $5; }
   }
-  | primary_exp COLON exp RARROW body
+  | raw_atom COLON exp RARROW body
   { { Ast.try_clause_exn = Some ($1, $2);
         try_clause_exp = $3;
         try_clause_guard = None;
+        try_clause_arrow = $4;
         try_clause_body = $5; }
   }
-  | primary_exp COLON exp WHEN guard RARROW body
+  | raw_atom COLON exp WHEN guard RARROW body
   { { Ast.try_clause_exn = Some ($1, $2);
         try_clause_exp = $3;
-        try_clause_guard = Some $5;
+        try_clause_guard = Some ($4, $5);
+        try_clause_arrow = $6;
         try_clause_body = $7; }
   }

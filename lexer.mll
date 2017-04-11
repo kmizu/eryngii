@@ -110,6 +110,7 @@ rule read =
   | "fun"   { FUN (to_loc lexbuf) }
   | "if"    { IF (to_loc lexbuf) }
   | "let"   { LET (to_loc lexbuf) }
+  | "not"   { NOT (to_loc lexbuf) }
   | "of"    { OF (to_loc lexbuf) }
   | "or"    { OR (to_loc lexbuf) }
   | "orelse" { ORELSE (to_loc lexbuf) }

@@ -314,6 +314,12 @@ let rec write ctx node =
       text ctx value.desc
     | Nil ->
       text ctx "[]"
+    | Tuple tuple ->
+      text ctx "{";
+      Seplist.opt_iter tuple.tuple_elts ~f:(fun sep arg ->
+          write_spec_type arg;
+          write_sep sep ", ");
+      text ctx "}"
     | List ty ->
       text ctx "[";
       Option.iter ty.enc_desc ~f:write_spec_type;
@@ -329,6 +335,10 @@ let rec write ctx node =
       text ctx constr.constr_name.desc;
       text ctx " :: ";
       write_spec_type constr.constr_type
+    | Union union ->
+      write_spec_type union.union_left;
+      text ctx " | ";
+      write_spec_type union.union_right
     | _ -> ()
   in
 

@@ -108,8 +108,8 @@ let paren open_ value close =
 
 %nonassoc CATCH
 %right EQ BANG
-%nonassoc ORELSE
-%nonassoc ANDALSO
+%left ORELSE
+%left ANDALSO
 %right PLUS2 MINUS2
 %left PLUS MINUS
 %nonassoc SEMI

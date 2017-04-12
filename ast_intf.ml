@@ -30,10 +30,10 @@ module Spec_type = struct
     | Atom of atom
     | Int of text
     | Range of range
-    | Nil (* TODO: remove *)
+    | Nil of (token * token)
     | Named of named
     | Bits of bits
-    | List of t option enclosed
+    | List of t enclosed
     | Tuple of tuple
     | Fun of fun_
     | Map of map

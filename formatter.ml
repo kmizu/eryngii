@@ -324,7 +324,7 @@ let rec write ctx node =
       text ctx "'"
     | Int value ->
       text ctx value.desc
-    | Nil ->
+    | Nil _ ->
       text ctx "[]"
     | Tuple tuple ->
       text ctx "{";
@@ -334,7 +334,7 @@ let rec write ctx node =
       text ctx "}"
     | List ty ->
       text ctx "[";
-      Option.iter ty.enc_desc ~f:write_spec_type;
+      write_spec_type ty.enc_desc;
       text ctx "]";
     | Named named ->
       text ctx named.named_name.desc;

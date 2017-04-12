@@ -377,9 +377,9 @@ spec_type:
     }
   }
   | LBRACK RBRACK
-  { Ast.(Spec_type.List (enclose $1 None $2)) }
+  { Ast.Spec_type.Nil ($1, $2) }
   | LBRACK spec_type RBRACK
-  { Ast.(Spec_type.List (enclose $1 (Some $2) $3)) }
+  { Ast.(Spec_type.List (enclose $1 $2 $3)) }
   | LBRACE RBRACE
   { Ast.Spec_type.Tuple {
       tuple_open = $1;

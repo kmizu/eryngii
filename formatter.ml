@@ -116,12 +116,17 @@ module Context = struct
 
 end
 
-let format_comment s =
-  let body = String.lstrip s ~drop:(fun c -> c = '%') in
-  let body' = String.lstrip body
-      ~drop:(fun c -> Option.is_some @@ String.index " \t\r\n" c)
+let format_comment line =
+  let line = String.substr_replace_all line
+      ~pattern:"\t"
+      ~with_:"    "
   in
-  "%% " ^ body'
+  let line = String.lstrip line ~drop:(fun c -> c = '%') in
+  let line = String.rstrip line in
+  if String.is_prefix line ~prefix:" " then
+    "%%" ^ line
+  else
+    "%% " ^ line
 
 let write_comment ctx pos =
   let open Context in

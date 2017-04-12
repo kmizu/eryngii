@@ -355,19 +355,19 @@ rev_spec_args:
 spec_arg:
   | spec_type { $1 }
 
-  (* TODO *)
 spec_type:
+  | raw_atom { Ast.Spec_type.Atom $1 }
+  | spec_type_constraint { $1 }
+  | spec_type_named { $1 }
+  | spec_type_list { $1 }
+  | spec_type_tuple { $1 }
+  | spec_type_fun { $1 }
+  | spec_type_bitstr { $1 }
+  | spec_type_map { $1 }
+  | spec_type_record { $1 }
+  | spec_type_union { $1 }
   | LPAREN spec_type RPAREN
   { Ast.(Spec_type.Paren (enclose $1 $2 $3)) }
-  | UIDENT COLON2 spec_type
-  { Ast.Spec_type.Constraint {
-      constr_name = $1;
-      constr_colon = $2;
-      constr_type = $3;
-    }
-  }
-  | raw_atom { Ast.Spec_type.Atom $1 }
-  | spec_type_named { $1 }
   | INT { Ast.Spec_type.Int $1 }
   | INT DOT2 INT
   { Ast.Spec_type.Range {
@@ -378,42 +378,15 @@ spec_type:
   }
   | LBRACK RBRACK
   { Ast.Spec_type.Nil ($1, $2) }
-  | LBRACK spec_type RBRACK
-  { Ast.(Spec_type.List (enclose $1 $2 $3)) }
-  | LBRACE RBRACE
-  { Ast.Spec_type.Tuple {
-      tuple_open = $1;
-      tuple_elts = None;
-      tuple_close = $2;
+
+spec_type_constraint:
+  | UIDENT COLON2 spec_type
+  { Ast.Spec_type.Constraint {
+      constr_name = $1;
+      constr_colon = $2;
+      constr_type = $3;
     }
   }
-  | LBRACE spec_type_args RBRACE
-  { Ast.Spec_type.Tuple {
-      tuple_open = $1;
-      tuple_elts = Some $2;
-      tuple_close = $3;
-    }
-  }
-  | FUN LPAREN RPAREN
-  { Ast.Spec_type.Fun {
-      fun_tag = $1;
-      fun_open = $2;
-      fun_body = None;
-      fun_close = $3;
-    }
-  }
-  | FUN LPAREN spec_fun_body RPAREN
-  { Ast.Spec_type.Fun {
-      fun_tag = $1;
-      fun_open = $2;
-      fun_body = Some $3;
-      fun_close = $4;
-    }
-  }
-  | spec_type_bitstr { $1 }
-  | spec_type_map { $1 }
-  | spec_type_record { $1 }
-  | spec_type_union { $1 }
 
 spec_type_named:
   | LIDENT LPAREN RPAREN
@@ -463,6 +436,44 @@ spec_type_args:
 rev_spec_type_args:
   | spec_type { Seplist.one $1 }
   | rev_spec_type_args COMMA spec_type { Seplist.cons $3 ~sep:$2 $1 }
+
+spec_type_list:
+  | LBRACK spec_type RBRACK
+  { Ast.(Spec_type.List (enclose $1 $2 $3)) }
+
+  spec_type_tuple:
+  | LBRACE RBRACE
+  { Ast.Spec_type.Tuple {
+      tuple_open = $1;
+      tuple_elts = None;
+      tuple_close = $2;
+    }
+  }
+  | LBRACE spec_type_args RBRACE
+  { Ast.Spec_type.Tuple {
+      tuple_open = $1;
+      tuple_elts = Some $2;
+      tuple_close = $3;
+    }
+  }
+
+spec_type_fun:
+  | FUN LPAREN RPAREN
+  { Ast.Spec_type.Fun {
+      fun_tag = $1;
+      fun_open = $2;
+      fun_body = None;
+      fun_close = $3;
+    }
+  }
+  | FUN LPAREN spec_fun_body RPAREN
+  { Ast.Spec_type.Fun {
+      fun_tag = $1;
+      fun_open = $2;
+      fun_body = Some $3;
+      fun_close = $4;
+    }
+  }
 
 spec_type_bitstr:
   | DLT DGT

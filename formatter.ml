@@ -395,6 +395,12 @@ let rec write ctx node =
     text ctx "]).";
     newline ctx
 
+  | Export_type_attr attr ->
+    text ctx "-export_type([";
+    write_fun_sigs attr.export_attr_funs ~indent:14;
+    text ctx "]).";
+    newline ctx
+
   | Import_attr attr ->
     text ctx "-import(";
     text ctx attr.import_attr_module.desc;

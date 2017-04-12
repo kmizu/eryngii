@@ -658,7 +658,7 @@ let format contents node =
   iter fmt.fmt_include;
   iter fmt.fmt_define;
   iter fmt.fmt_type;
-  Context.newlines ctx ~n:2;
+  Context.newlines ctx;
   iter fmt.fmt_decls;
 
   Op.write buf @@ Context.contents ctx;

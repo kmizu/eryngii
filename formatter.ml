@@ -116,24 +116,41 @@ module Context = struct
 
 end
 
-let format_comment line =
+let format_comment node line =
   let line = String.substr_replace_all line
       ~pattern:"\t"
       ~with_:"    "
   in
   let line = String.lstrip line ~drop:(fun c -> c = '%') in
   let line = String.rstrip line in
+  let prefix =
+    match node with
+    | Ast.Modname_attr _ -> "%%%"
+    | Export_attr _
+    | Export_type_attr _
+    | Import_attr _
+    | Include_attr _
+    | Inclib_attr _
+    | Define_attr _
+    | Type_attr _
+    | Spec_attr _
+    | Flow_attr _
+    | Flow_macro_attr _
+    | Fun_decl _ -> "%%"
+    | _ -> "%"
+  in
   if String.is_prefix line ~prefix:" " then
-    "%%" ^ line
+    prefix ^ line
   else
-    "%% " ^ line
+    prefix ^ " " ^ line
 
-let write_comment ctx pos =
+let write_comment ctx node =
   let open Context in
   let open Located in
   let open Location in
   let open Position in
 
+  let pos = Ast.start_pos node in
   let all = Annot.all_annots () in
   let _, _, comments = Array.fold_right all
       ~init:(Array.length all - 1, true, [])
@@ -150,7 +167,7 @@ let write_comment ctx pos =
                 | `Used ->
                   (i', true, accu)
                 | `Unused ->
-                  let s = format_comment @@ text.desc in
+                  let s = format_comment node text.desc in
                   (i', true, s :: accu)
               end
             | None ->
@@ -370,9 +387,7 @@ let rec write ctx node =
         text ctx ")")
   in
 
-  (* write comments *)
-  let start_pos = Ast.start_pos node in
-  write_comment ctx start_pos;
+  write_comment ctx node;
 
   match node with
   | Module m -> iter m.module_decls

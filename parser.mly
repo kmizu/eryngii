@@ -394,13 +394,6 @@ spec_type:
       tuple_close = $3;
     }
   }
-
-  (* TODO *)
-  | DLT DGT { Ast.Spec_type.Nil}
-  | DLT USCORE COLON INT DGT {Ast.Spec_type.Nil}
-  | DLT USCORE COLON USCORE MUL INT DGT {Ast.Spec_type.Nil}
-  | DLT USCORE COLON INT COMMA USCORE COLON USCORE MUL INT DGT {Ast.Spec_type.Nil}
-
   | FUN LPAREN RPAREN
   { Ast.Spec_type.Fun {
       fun_tag = $1;
@@ -417,6 +410,7 @@ spec_type:
       fun_close = $4;
     }
   }
+  | spec_type_bitstr { $1 }
   | spec_type_map { $1 }
   | spec_type_record { $1 }
   | spec_type_union { $1 }
@@ -469,6 +463,68 @@ spec_type_args:
 rev_spec_type_args:
   | spec_type { Seplist.one $1 }
   | rev_spec_type_args COMMA spec_type { Seplist.cons $3 ~sep:$2 $1 }
+
+spec_type_bitstr:
+  | DLT DGT
+  { Ast.Spec_type.Bits {
+      bits_open = $1;
+      bits_start_uscore = None;
+      bits_start_colon = None;
+      bits_start_bits = None;
+      bits_comma = None;
+      bits_cont_uscore1 = None;
+      bits_cont_colon = None;
+      bits_cont_uscore2 = None;
+      bits_cont_mul = None;
+      bits_cont_bits = None;
+      bits_close = $2;
+    }
+  }
+  | DLT USCORE COLON INT DGT
+  { Ast.Spec_type.Bits {
+      bits_open = $1;
+      bits_start_uscore = Some $2;
+      bits_start_colon = Some $3;
+      bits_start_bits = Some $4;
+      bits_comma = None;
+      bits_cont_uscore1 = None;
+      bits_cont_colon = None;
+      bits_cont_uscore2 = None;
+      bits_cont_mul = None;
+      bits_cont_bits = None;
+      bits_close = $5;
+    }
+  }
+  | DLT USCORE COLON USCORE MUL INT DGT
+  { Ast.Spec_type.Bits {
+      bits_open = $1;
+      bits_start_uscore = None;
+      bits_start_colon = None;
+      bits_start_bits = None;
+      bits_comma = None;
+      bits_cont_uscore1 = Some $2;
+      bits_cont_colon = Some $3;
+      bits_cont_uscore2 = Some $4;
+      bits_cont_mul = Some $5;
+      bits_cont_bits = Some $6;
+      bits_close = $5;
+    }
+  }
+  | DLT USCORE COLON INT COMMA USCORE COLON USCORE MUL INT DGT
+  { Ast.Spec_type.Bits {
+      bits_open = $1;
+      bits_start_uscore = Some $2;
+      bits_start_colon = Some $3;
+      bits_start_bits = Some $4;
+      bits_comma = Some $5;
+      bits_cont_uscore1 = Some $6;
+      bits_cont_colon = Some $7;
+      bits_cont_uscore2 = Some $8;
+      bits_cont_mul = Some $9;
+      bits_cont_bits = Some $10;
+      bits_close = $5;
+    }
+  }
 
 spec_fun_body:
   | LPAREN RPAREN RARROW spec_type

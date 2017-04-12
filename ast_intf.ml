@@ -32,6 +32,7 @@ module Spec_type = struct
     | Range of range
     | Nil (* TODO: remove *)
     | Named of named
+    | Bits of bits
     | List of t option enclosed
     | Tuple of tuple
     | Fun of fun_
@@ -44,6 +45,20 @@ module Spec_type = struct
     range_start : text;
     range_dot : token;
     range_end : text;
+  }
+
+  and bits = {
+    bits_open : token;
+    bits_start_uscore : text option;
+    bits_start_colon : token option;
+    bits_start_bits : text option;
+    bits_comma : token option;
+    bits_cont_uscore1 : text option;
+    bits_cont_colon : token option;
+    bits_cont_uscore2 : text option;
+    bits_cont_mul : token option;
+    bits_cont_bits : text option;
+    bits_close : token;
   }
 
   and named = {

@@ -643,26 +643,23 @@ let format contents node =
   let ctx = Context.create contents buf in
   let fmt = restruct node in
 
-  let iter nodes =
-    List.iter nodes ~f:(write ctx)
+  let iter ?(newline=true) nodes =
+    List.iter nodes ~f:(write ctx);
+    if newline then
+      Context.newline ctx
   in
 
-  let iterln nodes =
-    iter nodes;
-    if List.length nodes <> 0 then Context.newline ctx
-  in
-
-  iterln fmt.fmt_mod_name;
-  iterln fmt.fmt_behav;
-  iterln fmt.fmt_export;
-  iterln fmt.fmt_export_type;
-  iterln fmt.fmt_import;
-  iterln fmt.fmt_inclib;
-  iterln fmt.fmt_include;
-  iterln fmt.fmt_define;
-  iterln fmt.fmt_type;
+  iter fmt.fmt_mod_name;
+  iter fmt.fmt_behav;
+  iter fmt.fmt_export;
+  iter fmt.fmt_export_type;
+  iter fmt.fmt_import;
+  iter fmt.fmt_inclib;
+  iter fmt.fmt_include;
+  iter fmt.fmt_define;
+  iter fmt.fmt_type;
   Context.newlines ctx ~n:2;
-  iterln fmt.fmt_decls;
+  iter fmt.fmt_decls;
 
   Op.write buf @@ Context.contents ctx;
   String.strip @@ Buffer.contents buf

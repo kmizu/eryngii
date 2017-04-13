@@ -35,6 +35,10 @@ module Context = struct
     mutable ops : Op.t list;
     mutable indent_lv : int;
     mutable used_comments : Ast.text list;
+    mutable count : int option;
+    mutable state : [`Nop |
+                     `Type_attr of int * int (* indent * enclose_count *)
+                    ]; 
   }
 
   let create lines buf =
@@ -43,13 +47,54 @@ module Context = struct
       ops = [];
       indent_lv = 0;
       used_comments = [];
+      count = None;
+      state = `Nop;
     }
 
   let contents ctx =
     List.rev ctx.ops
 
+  let start_count ctx =
+    match ctx.count with
+    | Some _ -> failwith "already start count"
+    | None -> ctx.count <- Some 0
+
+  let end_count ctx =
+    match ctx.count with
+    | None -> failwith "not start count"
+    | Some count ->
+      ctx.count <- None;
+      count
+
+  let count ctx =
+    Option.value_exn ctx.count
+
+  let update ctx state =
+    ctx.state  <- state
+
+  let enclose_type_attr ctx =
+    match ctx.state with
+    | `Type_attr (indent, enclose) ->
+      update ctx (`Type_attr (indent, enclose+1))
+    | _ -> ()
+
+  let disclose_type_attr ctx =
+    match ctx.state with
+    | `Type_attr (indent, enclose) ->
+      update ctx (`Type_attr (indent, enclose-1))
+    | _ -> ()
+
   let add ctx op =
-    ctx.ops <- op :: ctx.ops
+    ctx.ops <- op :: ctx.ops;
+    Option.iter ctx.count ~f:(fun count ->
+        let add = 
+          match op with
+          | Text s -> String.length s
+          | Space n -> n
+          | Newline -> 1
+          | _ -> 0
+        in
+        ctx.count <- Some (count + add))
 
   let text ctx s =
     add ctx @@ Op.Text s
@@ -133,6 +178,7 @@ let format_comment node line =
     | Inclib_attr _
     | Define_attr _
     | Type_attr _
+    | Opaque_attr _
     | Spec_attr _
     | Flow_attr _
     | Flow_macro_attr _
@@ -332,6 +378,16 @@ let rec write ctx node =
 
   let rec write_spec_type ty =
     let open Spec_type in
+
+    begin match (ty, ctx.state) with
+      | Union _, _ -> ()
+      | _, `Type_attr (indent, 0) ->
+        newline ctx;
+        spaces ctx indent;
+        text ctx "| "
+      | _ -> ()
+    end;
+
     match ty with
     | Atom (`Unenclosed name) ->
       text ctx name.desc
@@ -344,15 +400,19 @@ let rec write ctx node =
     | Nil _ ->
       text ctx "[]"
     | Tuple tuple ->
+      enclose_type_attr ctx;
       text ctx "{";
       Seplist.opt_iter tuple.tuple_elts ~f:(fun sep arg ->
           write_spec_type arg;
           write_sep sep ", ");
-      text ctx "}"
+      text ctx "}";
+      disclose_type_attr ctx;
     | List ty ->
+      enclose_type_attr ctx;
       text ctx "[";
       write_spec_type ty.enc_desc;
       text ctx "]";
+      disclose_type_attr ctx;
     | Named named ->
       text ctx named.named_name.desc;
       text ctx "(";
@@ -366,7 +426,10 @@ let rec write ctx node =
       write_spec_type constr.constr_type
     | Union union ->
       write_spec_type union.union_left;
-      text ctx " | ";
+      begin match ctx.state with
+        | `Type_attr (_, 0) -> ()
+        | _ -> text ctx " | "
+      end;
       write_spec_type union.union_right
     | _ -> ()
   in
@@ -465,12 +528,22 @@ let rec write ctx node =
     dot_newline ctx
 
   | Type_attr attr ->
+    start_count ctx;
     text ctx "-type ";
     text ctx attr.type_attr_name.desc;
     text ctx "(";
     write_spec_args attr.type_attr_args;
     text ctx ") :: ";
-    write_spec_type attr.type_attr_type;
+    let count = end_count ctx - 2 in
+    begin match attr.type_attr_type with
+      | Union union ->
+        write_spec_type union.union_left;
+        update ctx (`Type_attr (count, 0));
+        write_spec_type union.union_right;
+      | other ->
+        write_spec_type other
+    end;
+    update ctx `Nop;
     dot_newline ctx
 
   | Flow_macro_attr attr ->

@@ -116,7 +116,7 @@ let paren open_ value close =
 %nonassoc NSIGN
 %nonassoc COLON
 
-%left BAR
+%right BAR
 %nonassoc COLON2
 
 %start <Ast.t> prog

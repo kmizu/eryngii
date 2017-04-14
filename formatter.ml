@@ -5,8 +5,8 @@ module Op = struct
 
   type t =
     | Nop
-    | Indent
-    | Dedent
+    | Nest
+    | Unnest
     | Text of string
     | Space of int
     | Newline
@@ -33,7 +33,7 @@ module Context = struct
     lines : string array;
     buf : Buffer.t;
     mutable ops : Op.t list;
-    mutable indent_lv : int;
+    mutable indent : int;
     mutable used_comments : Ast.text list;
     mutable count : int option;
     mutable state : [`Nop |
@@ -45,7 +45,7 @@ module Context = struct
     { lines = Array.of_list lines;
       buf;
       ops = [];
-      indent_lv = 0;
+      indent = 0;
       used_comments = [];
       count = None;
       state = `Nop;
@@ -140,14 +140,14 @@ module Context = struct
     text ctx ".";
     newlines ctx ~n
 
+  let nest ctx =
+    ctx.indent <- ctx.indent + 1
+
   let indent ctx =
-    ctx.indent_lv <- ctx.indent_lv + 1
+    spaces ctx @@ ctx.indent * 4
 
-  let indent_spaces ctx =
-    spaces ctx @@ ctx.indent_lv * 4
-
-  let dedent ctx =
-    ctx.indent_lv <- ctx.indent_lv - 1
+  let unnest ctx =
+    ctx.indent <- ctx.indent - 1
 
   let use_comment ctx com = 
     if List.existsi ctx.used_comments
@@ -229,7 +229,7 @@ let write_comment ctx node =
   List.iter comments ~f:(fun comment ->
       text ctx comment;
       newline ctx;
-      indent_spaces ctx)
+      indent ctx)
 
 let rec write ctx node =
   let open Ast_intf in
@@ -249,7 +249,7 @@ let rec write ctx node =
   let write_seplist ?(split=false) seplist sep =
     Seplist.iter seplist ~f:(fun sep_opt node ->
         if split then
-          indent_spaces ctx;
+          indent ctx;
         write ctx node;
         write_sep sep_opt sep;
         if split then
@@ -318,7 +318,7 @@ let rec write ctx node =
     rarrow ctx;
     newline ctx;
     Seplist.iter clause.fun_clause_body ~f:(fun sep exp ->
-        indent_spaces ctx;
+        indent ctx;
         write ctx exp;
         write_sep sep ",\n")
   in
@@ -565,27 +565,27 @@ let rec write ctx node =
     dot_newline ctx
 
   | Fun_decl decl ->
-    indent ctx;
+    nest ctx;
     write_fun_body decl.fun_decl_body;
     text ctx ".";
     newlines ctx;
-    dedent ctx
+    unnest ctx
 
   | Try try_ ->
     text ctx "try";
     newline ctx;
-    indent ctx;
+    nest ctx;
     write_exp_list ~split:true try_.try_exps;
     Option.iter try_.try_of ~f:(fun _ -> text ctx " of ");
-    dedent ctx;
+    unnest ctx;
     let catch = try_.try_catch in
     Option.iter catch.try_catch_clauses ~f:(fun clauses ->
-        indent_spaces ctx;
+        indent ctx;
         text ctx "catch";
         newline ctx;
-        indent ctx;
+        nest ctx;
         Seplist.iter clauses ~f:(fun sep clause ->
-            indent_spaces ctx;
+            indent ctx;
             Option.iter clause.try_clause_exn
               ~f:(fun (exn, _) ->
                   atom ctx exn;
@@ -596,11 +596,11 @@ let rec write ctx node =
                 write_guard guard);
             text ctx " ->";
             newline ctx;
-            indent ctx;
+            nest ctx;
             write_exp_list ~split:true clause.try_clause_body;
-            dedent ctx);
-        dedent ctx);
-    indent_spaces ctx;
+            unnest ctx);
+        unnest ctx);
+    indent ctx;
     text ctx "end"
 
   | Call call ->

@@ -1334,14 +1334,14 @@ cr_clause:
   | pattern RARROW body
   { { Ast.cr_clause_ptn = $1;
         Ast.cr_clause_when = None;
-        Ast.cr_clause_guard = Seplist.empty;
+        Ast.cr_clause_guard = None;
         Ast.cr_clause_arrow = $2;
         Ast.cr_clause_body = $3; } }
 
   | pattern WHEN guard RARROW body
   { { Ast.cr_clause_ptn = $1;
         Ast.cr_clause_when = Some $2;
-        Ast.cr_clause_guard = $3;
+        Ast.cr_clause_guard = Some $3;
         Ast.cr_clause_arrow = $4;
         Ast.cr_clause_body = $5; } }
 

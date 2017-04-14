@@ -408,7 +408,7 @@ and case = {
 and cr_clause = {
   cr_clause_ptn : t;
   cr_clause_when : token option;
-  cr_clause_guard : guard;
+  cr_clause_guard : guard option;
   cr_clause_arrow : token;
   cr_clause_body : exp_list;
 }

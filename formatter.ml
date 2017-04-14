@@ -309,6 +309,27 @@ let rec write ctx node =
         write_sep sep ", ")
   in
 
+  let write_cr_clause clause =
+    write ctx clause.cr_clause_ptn;
+    Option.iter clause.cr_clause_when
+      ~f:(fun _ ->
+          text ctx " when ";
+          write_guard clause.cr_clause_guard);
+    text ctx " ->";
+    newline ctx;
+    nest ctx;
+    indent ctx;
+    write_exp_list clause.cr_clause_body;
+    unnest ctx;
+  in
+
+  let write_cr_clauses clauses =
+    Seplist.iter clauses ~f:(fun sep clause ->
+        indent ctx;
+        write_cr_clause clause;
+        write_sep sep ";\n")
+  in
+
   let write_fun_clause clause =
     Option.iter clause.fun_clause_name ~f:(fun name -> text ctx name.desc);
     text ctx "(";
@@ -570,6 +591,17 @@ let rec write ctx node =
     text ctx ".";
     newlines ctx;
     unnest ctx
+
+  | Case case ->
+    text ctx "case ";
+    write ctx case.case_exp;
+    text ctx " of";
+    newline ctx;
+    indent ctx;
+    write_cr_clauses case.case_clauses;
+    newline ctx;
+    indent ctx;
+    text ctx "end"
 
   | Try try_ ->
     text ctx "try";

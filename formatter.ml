@@ -657,6 +657,11 @@ let rec write ctx node =
         write ctx tail);
     text ctx "]"
 
+  | Anon_fun f ->
+    text ctx "fun";
+    write_fun_body f.anon_fun_body;
+    text ctx " end"
+
   | _ -> text ctx "?"
 
 type formatted = {

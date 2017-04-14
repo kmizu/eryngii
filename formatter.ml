@@ -261,8 +261,9 @@ let rec write ctx node =
   in
 
   let write_guard guard =
-    (* TODO *)
-    ()
+    Seplist.iter guard ~f:(fun sep exp_list ->
+        write_exp_list exp_list;
+        write_sep sep ", ")
   in
 
   let write_when_guard w guard =
@@ -314,7 +315,7 @@ let rec write ctx node =
     Option.iter clause.cr_clause_when
       ~f:(fun _ ->
           text ctx " when ";
-          write_guard clause.cr_clause_guard);
+          write_guard @@ Option.value_exn clause.cr_clause_guard);
     text ctx " ->";
     newline ctx;
     nest ctx;

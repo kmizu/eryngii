@@ -593,6 +593,15 @@ let rec write ctx node =
     newlines ctx;
     unnest ctx
 
+  | If if_ ->
+    text ctx "if ";
+    Seplist.iter if_.if_clauses ~f:(fun sep clause ->
+        write_guard clause.if_clause_guard;
+        text ctx " -> ";
+        write_exp_list clause.if_clause_body;
+        Option.iter sep ~f:(fun _ -> text ctx ";\n"));
+    text ctx " end"
+
   | Case case ->
     text ctx "case ";
     write ctx case.case_exp;

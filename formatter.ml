@@ -649,6 +649,18 @@ let rec write ctx node =
     space ctx;
     write ctx exp.binexp_right
 
+  | List_compr compr ->
+    text ctx "[";
+    write ctx compr.compr_exp;
+    text ctx " || ";
+    write_exp_list compr.compr_quals;
+    text ctx "]"
+
+  | List_compr_gen gen ->
+    write ctx gen.gen_ptn;
+    text ctx " -> ";
+    write ctx gen.gen_exp
+
   | Paren paren ->
     text ctx "(";
     write ctx paren.enc_desc;

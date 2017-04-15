@@ -99,8 +99,9 @@ module Context = struct
   let text ctx s =
     add ctx @@ Op.Text s
 
-  let word ctx s =
-    text ctx s
+  let textln ctx s =
+    add ctx @@ Op.Text s;
+    add ctx @@ Op.Newline
 
   let atom ctx = function
     | `Unenclosed name ->
@@ -114,9 +115,6 @@ module Context = struct
     text ctx "\"";
     text ctx s;
     text ctx "\""
-
-  let rarrow ctx =
-    add ctx @@ Op.Text "->"
 
   let space ctx =
     add ctx @@ Op.Space 1
@@ -323,8 +321,7 @@ let rec write ctx node =
       ~f:(fun _ ->
           text ctx " when ";
           write_guard @@ Option.value_exn clause.cr_clause_guard);
-    text ctx " ->";
-    newline ctx;
+    textln ctx " ->";
     nest ctx;
     indent ctx;
     write_exp_list clause.cr_clause_body;
@@ -344,8 +341,7 @@ let rec write ctx node =
     write_patterns clause.fun_clause_ptns;
     text ctx ") ";
     write_when_guard clause.fun_clause_when clause.fun_clause_guard;
-    rarrow ctx;
-    newline ctx;
+    textln ctx "->";
     Seplist.iter clause.fun_clause_body ~f:(fun sep exp ->
         indent ctx;
         write ctx exp;
@@ -514,20 +510,17 @@ let rec write ctx node =
     text ctx ", [";
     write_fun_sigs attr.import_attr_funs
       ~indent:(11 + String.length attr.import_attr_module.desc);
-    text ctx "]).";
-    newline ctx
+    textln ctx "])."
 
   | Include_attr attr ->
     text ctx "-include(";
     string ctx attr.include_attr_file.desc;
-    text ctx ").";
-    newline ctx
+    textln ctx ").";
 
   | Inclib_attr attr ->
     text ctx "-include_lib(";
     string ctx attr.inclib_attr_file.desc;
-    text ctx ").";
-    newline ctx
+    textln ctx ")."
 
   | Define_attr attr ->
     text ctx "-define(";
@@ -535,8 +528,7 @@ let rec write ctx node =
     write_def_name attr.def_attr_name;
     text ctx ", ";
     write ctx attr.def_attr_value;
-    text ctx ").";
-    newline ctx
+    textln ctx ").";
 
   | Spec_attr attr ->
     text ctx "-spec ";
@@ -590,8 +582,7 @@ let rec write ctx node =
               text ctx " :: ";
               write_spec_type field.field_type;
               Option.iter sep ~f:(fun _ -> text ctx ", ")));
-    text ctx "})";
-    dot_newline ctx
+    textln ctx "})."
 
   | Flow_macro_attr attr ->
     text ctx "-";
@@ -601,15 +592,13 @@ let rec write ctx node =
         | `Ifndef -> "ifndef");
     text ctx "(";
     text ctx attr.flow_macro_attr_macro.desc;
-    text ctx ")";
-    dot_newline ctx
+    textln ctx ")."
 
   | Flow_attr attr ->
     text ctx "-";
-    text ctx (match attr.flow_attr_tag_type with
-        | `Else -> "else"
-        | `Endif -> "endif");
-    dot_newline ctx
+    textln ctx (match attr.flow_attr_tag_type with
+        | `Else -> "else."
+        | `Endif -> "endif.")
 
   | Fun_decl decl ->
     nest ctx;
@@ -630,8 +619,7 @@ let rec write ctx node =
   | Case case ->
     text ctx "case ";
     write ctx case.case_exp;
-    text ctx " of";
-    newline ctx;
+    textln ctx " of";
     indent ctx;
     write_cr_clauses case.case_clauses;
     newline ctx;
@@ -639,9 +627,8 @@ let rec write ctx node =
     text ctx "end"
 
   | Recv recv ->
-    text ctx "receive";
+    textln ctx "receive";
     nest ctx;
-    newline ctx;
     write_cr_clauses recv.recv_clauses;
     Option.iter recv.recv_after ~f:(fun after ->
         newline ctx;
@@ -658,8 +645,7 @@ let rec write ctx node =
     text ctx "end"
 
   | Try try_ ->
-    text ctx "try";
-    newline ctx;
+    textln ctx "try";
     nest ctx;
     write_exp_list ~split:true try_.try_exps;
     Option.iter try_.try_of ~f:(fun _ -> text ctx " of ");
@@ -667,8 +653,7 @@ let rec write ctx node =
     let catch = try_.try_catch in
     Option.iter catch.try_catch_clauses ~f:(fun clauses ->
         indent ctx;
-        text ctx "catch";
-        newline ctx;
+        textln ctx "catch";
         nest ctx;
         Seplist.iter clauses ~f:(fun sep clause ->
             indent ctx;
@@ -680,8 +665,7 @@ let rec write ctx node =
             Option.iter clause.try_clause_guard ~f:(fun (_when, guard) ->
                 text ctx " when ";
                 write_guard guard);
-            text ctx " ->";
-            newline ctx;
+            textln ctx " ->";
             nest ctx;
             write_exp_list ~split:true clause.try_clause_body;
             unnest ctx);

@@ -108,6 +108,12 @@ module Context = struct
     add ctx @@ Op.Text s;
     newline ctx ~ln
 
+  let container ctx ~enclose ~f =
+    let open_, close = enclose in
+    text ctx open_;
+    f ();
+    text ctx close
+
   let atom ctx = function
     | `Unenclosed name ->
       text ctx name.desc
@@ -499,22 +505,26 @@ let rec write ctx node =
     textln ctx "])."
 
   | Include_attr attr ->
-    text ctx "-include(";
-    string ctx attr.include_attr_file.desc;
-    textln ctx ").";
+    container ctx
+      ~enclose:("-include(", ").")
+      ~f:(fun () -> string ctx attr.include_attr_file.desc);
+    newline ctx
 
   | Inclib_attr attr ->
-    text ctx "-include_lib(";
-    string ctx attr.inclib_attr_file.desc;
-    textln ctx ")."
+    container ctx
+      ~enclose:("-include_lib(", ").")
+      ~f:(fun () -> string ctx attr.inclib_attr_file.desc);
+    newline ctx
 
   | Define_attr attr ->
-    text ctx "-define(";
-    (*text ctx @@ Naming.uppercase attr.def_attr_name.desc;*)
-    write_def_name attr.def_attr_name;
-    text ctx ", ";
-    write ctx attr.def_attr_value;
-    textln ctx ").";
+    container ctx
+      ~enclose:("-define(", ").")
+      ~f:(fun () ->
+          (*text ctx @@ Naming.uppercase attr.def_attr_name.desc;*)
+          write_def_name attr.def_attr_name;
+          text ctx ", ";
+          write ctx attr.def_attr_value);
+    newline ctx
 
   | Spec_attr attr ->
     text ctx "-spec ";
@@ -584,21 +594,21 @@ let rec write ctx node =
     textln ctx "." ~ln:2
 
   | If if_ ->
-    text ctx "if ";
-    Seplist.iter if_.if_clauses ~f:(fun sep clause ->
-        write_guard clause.if_clause_guard;
-        text ctx " -> ";
-        write_exp_list clause.if_clause_body;
-        Option.iter sep ~f:(fun _ -> text ctx ";\n"));
-    text ctx " end"
+    block ctx
+      ~enclose:("if", "end")
+      ~f:(fun () ->
+          Seplist.iter if_.if_clauses ~f:(fun sep clause ->
+              write_guard clause.if_clause_guard;
+              text ctx " -> ";
+              write_exp_list clause.if_clause_body;
+              Option.iter sep ~f:(fun _ -> text ctx ";\n")))
 
   | Case case ->
     text ctx "case ";
     write ctx case.case_exp;
     textln ctx " of";
-    indent ctx;
-    write_cr_clauses case.case_clauses;
-    newline ctx;
+    block ctx
+      ~f:(fun () -> write_cr_clauses case.case_clauses);
     indent ctx;
     text ctx "end"
 
@@ -645,9 +655,9 @@ let rec write ctx node =
 
   | Call call ->
     write_fun_name call.call_fname;
-    text ctx "(";
-    write_exp_list call.call_args;
-    text ctx ")"
+    container ctx
+      ~enclose:("(", ")")
+      ~f:(fun () -> write_exp_list call.call_args)
 
   | Unexp (op, exp) ->
     write_op op.desc;
@@ -662,11 +672,12 @@ let rec write ctx node =
     write ctx exp.binexp_right
 
   | List_compr compr ->
-    text ctx "[";
-    write ctx compr.compr_exp;
-    text ctx " || ";
-    write_exp_list compr.compr_quals;
-    text ctx "]"
+    container ctx
+      ~enclose:("[", "]")
+      ~f:(fun () ->
+          write ctx compr.compr_exp;
+          text ctx " || ";
+          write_exp_list compr.compr_quals)
 
   | List_compr_gen gen ->
     write ctx gen.gen_ptn;
@@ -679,9 +690,9 @@ let rec write ctx node =
       ~f:(fun () -> write_exp_list ~split:true exps.enc_desc)
 
   | Paren paren ->
-    text ctx "(";
-    write ctx paren.enc_desc;
-    text ctx ")"
+    container ctx
+      ~enclose:("(", ")")
+      ~f:(fun () -> write ctx paren.enc_desc)
 
   | Var name
   | Uscore name ->

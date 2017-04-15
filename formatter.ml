@@ -638,6 +638,25 @@ let rec write ctx node =
     indent ctx;
     text ctx "end"
 
+  | Recv recv ->
+    text ctx "receive";
+    nest ctx;
+    newline ctx;
+    write_cr_clauses recv.recv_clauses;
+    Option.iter recv.recv_after ~f:(fun after ->
+        newline ctx;
+        text ctx "after";
+        nest ctx;
+        newline ctx;
+        indent ctx;
+        write ctx after.recv_after_timer;
+        text ctx " -> ";
+        write_exp_list after.recv_after_body);
+    unnest ctx;
+    newline ctx;
+    indent ctx;
+    text ctx "end"
+
   | Try try_ ->
     text ctx "try";
     newline ctx;

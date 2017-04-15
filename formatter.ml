@@ -700,6 +700,15 @@ let rec write ctx node =
     text ctx " -> ";
     write ctx gen.gen_exp
 
+  | Block block ->
+    text ctx "begin ";
+    nest ctx;
+    newline ctx;
+    write_exp_list ~split:true block.enc_desc;
+    unnest ctx;
+    indent ctx;
+    text ctx "end"
+
   | Paren paren ->
     text ctx "(";
     write ctx paren.enc_desc;

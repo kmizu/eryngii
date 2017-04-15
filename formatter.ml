@@ -33,7 +33,7 @@ module Context = struct
     lines : string array;
     buf : Buffer.t;
     mutable ops : Op.t list;
-    mutable indent : int;
+    mutable indent : int list;
     mutable used_comments : Ast.text list;
     mutable count : int option;
     mutable state : [`Nop |
@@ -45,7 +45,7 @@ module Context = struct
     { lines = Array.of_list lines;
       buf;
       ops = [];
-      indent = 0;
+      indent = [0];
       used_comments = [];
       count = None;
       state = `Nop;
@@ -140,14 +140,21 @@ module Context = struct
     text ctx ".";
     newlines ctx ~n
 
-  let nest ctx =
-    ctx.indent <- ctx.indent + 1
-
-  let indent ctx =
-    spaces ctx @@ ctx.indent * 4
+  let nest ?indent ctx =
+    let indent = match indent with
+      | Some n -> n
+      | None -> 4 * List.length ctx.indent
+    in
+    ctx.indent <- indent :: ctx.indent
 
   let unnest ctx =
-    ctx.indent <- ctx.indent - 1
+    ctx.indent <- List.tl_exn ctx.indent
+
+  let cur_indent ctx =
+    List.hd_exn ctx.indent
+
+  let indent ctx =
+    cur_indent ctx |> spaces ctx 
 
   let use_comment ctx com = 
     if List.existsi ctx.used_comments

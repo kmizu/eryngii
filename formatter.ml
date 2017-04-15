@@ -755,7 +755,7 @@ let rec write ctx node =
     write_fun_body f.anon_fun_body;
     text ctx " end"
 
-  | _ -> failwith "not impl"
+  | _ -> text ctx "(?)" (* failwith "not impl" *)
 
 type formatted = {
   fmt_mod_name: Ast.t list;

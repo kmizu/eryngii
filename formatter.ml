@@ -126,21 +126,37 @@ module Context = struct
   let dot_newline ctx =
     textln ctx "."
 
-  let nest ?indent ctx =
-    let indent = match indent with
-      | Some n -> n
-      | None -> 4 * List.length ctx.indent
-    in
-    ctx.indent <- indent :: ctx.indent
-
-  let unnest ctx =
-    ctx.indent <- List.tl_exn ctx.indent
-
   let cur_indent ctx =
     List.hd_exn ctx.indent
 
   let indent ctx =
     cur_indent ctx |> spaces ctx 
+
+  let nest ?(indent=4) ctx =
+    ctx.indent <- indent :: ctx.indent
+
+  let unnest ctx =
+    ctx.indent <- List.tl_exn ctx.indent
+
+  let block ?indent:lv ?enclose ctx ~f =
+    let lv = match lv with
+      | Some n -> n
+      | None -> 4 * List.length ctx.indent
+    in
+    nest ctx ~indent:lv;
+    begin match enclose with
+      | None -> ()
+      | Some (open_, _) -> textln ctx open_
+    end;
+    f ();
+    newline ctx;
+    unnest ctx;
+    begin match enclose with
+      | None -> ()
+      | Some (_, close) ->
+        indent ctx;
+        textln ctx close
+    end
 
   let use_comment ctx com = 
     if List.existsi ctx.used_comments
@@ -307,10 +323,7 @@ let rec write ctx node =
           text ctx " when ";
           write_guard @@ Option.value_exn clause.cr_clause_guard);
     textln ctx " ->";
-    nest ctx;
-    indent ctx;
-    write_exp_list clause.cr_clause_body;
-    unnest ctx;
+    block ctx ~f:(fun () -> write_exp_list clause.cr_clause_body)
   in
 
   let write_cr_clauses clauses =
@@ -567,9 +580,7 @@ let rec write ctx node =
         | `Endif -> "endif.")
 
   | Fun_decl decl ->
-    nest ctx;
-    write_fun_body decl.fun_decl_body;
-    unnest ctx;
+    block ctx ~f:(fun () -> write_fun_body decl.fun_decl_body);
     textln ctx "." ~ln:2
 
   | If if_ ->
@@ -592,49 +603,43 @@ let rec write ctx node =
     text ctx "end"
 
   | Recv recv ->
-    textln ctx "receive";
-    nest ctx;
-    write_cr_clauses recv.recv_clauses;
-    Option.iter recv.recv_after ~f:(fun after ->
-        newline ctx;
-        text ctx "after";
-        nest ctx;
-        newline ctx;
-        indent ctx;
-        write ctx after.recv_after_timer;
-        text ctx " -> ";
-        write_exp_list after.recv_after_body);
-    unnest ctx;
-    newline ctx;
-    indent ctx;
-    text ctx "end"
+    block ctx
+      ~enclose:("receive", "end")
+      ~f:(fun () ->
+          write_cr_clauses recv.recv_clauses;
+          Option.iter recv.recv_after ~f:(fun after ->
+              newline ctx;
+              text ctx "after";
+              block ctx ~f:(fun () ->
+                  indent ctx;
+                  write ctx after.recv_after_timer;
+                  text ctx " -> ";
+                  write_exp_list after.recv_after_body)))
 
   | Try try_ ->
-    textln ctx "try";
-    nest ctx;
+    textln ctx "try ";
     write_exp_list ~split:true try_.try_exps;
     Option.iter try_.try_of ~f:(fun _ -> text ctx " of ");
-    unnest ctx;
     let catch = try_.try_catch in
     Option.iter catch.try_catch_clauses ~f:(fun clauses ->
         indent ctx;
         textln ctx "catch";
-        nest ctx;
-        Seplist.iter clauses ~f:(fun sep clause ->
-            indent ctx;
-            Option.iter clause.try_clause_exn
-              ~f:(fun (exn, _) ->
-                  atom ctx exn;
-                  text ctx ":");
-            write ctx clause.try_clause_exp;
-            Option.iter clause.try_clause_guard ~f:(fun (_when, guard) ->
-                text ctx " when ";
-                write_guard guard);
-            textln ctx " ->";
-            nest ctx;
-            write_exp_list ~split:true clause.try_clause_body;
-            unnest ctx);
-        unnest ctx);
+        block ctx ~f:(fun () ->
+            Seplist.iter clauses ~f:(fun sep clause ->
+                indent ctx;
+                Option.iter clause.try_clause_exn
+                  ~f:(fun (exn, _) ->
+                      atom ctx exn;
+                      text ctx ":");
+                write ctx clause.try_clause_exp;
+                Option.iter clause.try_clause_guard ~f:(fun (_when, guard) ->
+                    text ctx " when ";
+                    write_guard guard);
+                textln ctx " ->";
+                block ctx
+                  ~f:(fun () ->
+                      write_exp_list ~split:true clause.try_clause_body))));
+    (* TODO: after *)
     indent ctx;
     text ctx "end"
 
@@ -668,14 +673,10 @@ let rec write ctx node =
     text ctx " -> ";
     write ctx gen.gen_exp
 
-  | Block block ->
-    text ctx "begin ";
-    nest ctx;
-    newline ctx;
-    write_exp_list ~split:true block.enc_desc;
-    unnest ctx;
-    indent ctx;
-    text ctx "end"
+  | Block exps ->
+    block ctx
+      ~enclose:("begin", "end")
+      ~f:(fun () -> write_exp_list ~split:true exps.enc_desc)
 
   | Paren paren ->
     text ctx "(";

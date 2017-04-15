@@ -642,6 +642,11 @@ let rec write ctx node =
     write_exp_list call.call_args;
     text ctx ")"
 
+  | Unexp (op, exp) ->
+    write_op op.desc;
+    space ctx;
+    write ctx exp
+
   | Binexp exp ->
     write ctx exp.binexp_left;
     space ctx;

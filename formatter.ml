@@ -96,25 +96,26 @@ module Context = struct
         in
         ctx.count <- Some (count + add))
 
+  let newline ?(ln=1) ctx =
+    for i = 1 to ln do
+      add ctx @@ Op.Newline
+    done
+
   let text ctx s =
     add ctx @@ Op.Text s
 
-  let textln ctx s =
+  let textln ?(ln=1) ctx s =
     add ctx @@ Op.Text s;
-    add ctx @@ Op.Newline
+    newline ctx ~ln
 
   let atom ctx = function
     | `Unenclosed name ->
       text ctx name.desc
     | `Enclosed name ->
-      text ctx "'";
-      text ctx name.desc;
-      text ctx "'"
+      text ctx @@ "'" ^ name.desc ^ "'"
 
   let string ctx s =
-    text ctx "\"";
-    text ctx s;
-    text ctx "\""
+    text ctx @@ "\"" ^ s ^ "\""
 
   let space ctx =
     add ctx @@ Op.Space 1
@@ -122,21 +123,8 @@ module Context = struct
   let spaces ctx n =
     add ctx @@ Op.Space n
 
-  let newline ctx =
-    add ctx @@ Op.Newline
-
-  let newlines ?(n=2) ctx =
-    for i = 1 to n do
-      add ctx @@ Op.Newline
-    done
-
   let dot_newline ctx =
-    text ctx ".";
-    newline ctx
-
-  let dot_newlines ?(n=2) ctx =
-    text ctx ".";
-    newlines ctx ~n
+    textln ctx "."
 
   let nest ?indent ctx =
     let indent = match indent with
@@ -232,8 +220,7 @@ let write_comment ctx node =
           end)
   in
   List.iter comments ~f:(fun comment ->
-      text ctx comment;
-      newline ctx;
+      textln ctx comment;
       indent ctx)
 
 let rec write ctx node =
@@ -281,9 +268,7 @@ let rec write ctx node =
   in
 
   let write_fun_sig fsig =
-    text ctx fsig.fun_sig_name.desc;
-    text ctx "/";
-    text ctx fsig.fun_sig_arity.desc
+    text ctx @@ fsig.fun_sig_name.desc ^ "/" ^ fsig.fun_sig_arity.desc
   in
 
   let write_fun_sigs fsigs ~indent =
@@ -417,9 +402,7 @@ let rec write ctx node =
     | Atom (`Unenclosed name) ->
       text ctx name.desc
     | Atom (`Enclosed name) ->
-      text ctx "'";
-      text ctx name.desc;
-      text ctx "'"
+      text ctx @@ "'" ^ name.desc ^ "'"
     | Int value ->
       text ctx value.desc
     | Nil _ ->
@@ -439,7 +422,7 @@ let rec write ctx node =
       text ctx "]";
       disclose_type_attr ctx;
     | Named named ->
-      text ctx named.named_name.desc;
+      text ctx @@ named.named_name.desc;
       text ctx "(";
       Seplist.opt_iter named.named_args ~f:(fun sep arg ->
           write_spec_type arg;
@@ -481,33 +464,23 @@ let rec write ctx node =
   | Module m -> iter m.module_decls
 
   | Modname_attr attr ->
-    text ctx "-module(";
-    text ctx attr.modname_attr_name.desc;
-    text ctx ").";
-    newline ctx
+    textln ctx @@ "-module(" ^ attr.modname_attr_name.desc ^ ")."
 
   | Behav_attr attr ->
-    text ctx "-behaviour(";
-    text ctx attr.behav_attr_name.desc;
-    text ctx ").";
-    newline ctx
+    textln ctx @@ "-behaviour(" ^ attr.behav_attr_name.desc ^ ")."
 
   | Export_attr attr ->
     text ctx "-export([";
     write_fun_sigs attr.export_attr_funs ~indent:9;
-    text ctx "]).";
-    newline ctx
+    textln ctx "])."
 
   | Export_type_attr attr ->
     text ctx "-export_type([";
     write_fun_sigs attr.export_attr_funs ~indent:14;
-    text ctx "]).";
-    newline ctx
+    textln ctx "])."
 
   | Import_attr attr ->
-    text ctx "-import(";
-    text ctx attr.import_attr_module.desc;
-    text ctx ", [";
+    text ctx @@ "-import(" ^ attr.import_attr_module.desc ^ ", [";
     write_fun_sigs attr.import_attr_funs
       ~indent:(11 + String.length attr.import_attr_module.desc);
     textln ctx "])."
@@ -535,8 +508,7 @@ let rec write ctx node =
     begin match attr.spec_attr_mname with
       | None -> ()
       | Some (mname, _) ->
-        text ctx mname.desc;
-        text ctx ":"
+        text ctx @@ mname.desc ^ ":"
     end;
     text ctx attr.spec_attr_fname.desc;
     Seplist.iter attr.spec_attr_clauses
@@ -550,9 +522,7 @@ let rec write ctx node =
 
   | Type_attr attr ->
     start_count ctx;
-    text ctx "-type ";
-    text ctx attr.type_attr_name.desc;
-    text ctx "(";
+    text ctx @@ "-type " ^ attr.type_attr_name.desc ^ "(";
     write_spec_args attr.type_attr_args;
     text ctx ") :: ";
     let count = end_count ctx - 2 in
@@ -568,9 +538,7 @@ let rec write ctx node =
     dot_newline ctx
 
   | Record_attr attr ->
-    text ctx "-record(";
-    text ctx attr.rec_attr_name.desc;
-    text ctx ", {";
+    text ctx @@ "-record(" ^ attr.rec_attr_name.desc ^ ", {";
     (*rec_attr_fields : Spec_type.field node_list option;*)
     Option.iter attr.rec_attr_fields
       ~f:(fun fields ->
@@ -590,9 +558,7 @@ let rec write ctx node =
         | `Undef -> "undef"
         | `Ifdef -> "ifdef"
         | `Ifndef -> "ifndef");
-    text ctx "(";
-    text ctx attr.flow_macro_attr_macro.desc;
-    textln ctx ")."
+    textln ctx @@ "(" ^ attr.flow_macro_attr_macro.desc ^ ")."
 
   | Flow_attr attr ->
     text ctx "-";
@@ -603,9 +569,8 @@ let rec write ctx node =
   | Fun_decl decl ->
     nest ctx;
     write_fun_body decl.fun_decl_body;
-    text ctx ".";
-    newlines ctx;
-    unnest ctx
+    unnest ctx;
+    textln ctx "." ~ln:2
 
   | If if_ ->
     text ctx "if ";
@@ -722,8 +687,7 @@ let rec write ctx node =
     text ctx name.desc
 
   | Macro macro ->
-    text ctx "?";
-    text ctx macro.macro_name.desc
+    text ctx @@ "?" ^  macro.macro_name.desc
 
   | Int value
   | Float value ->
@@ -733,9 +697,7 @@ let rec write ctx node =
     text ctx value.desc
 
   | Atom (`Enclosed value) ->
-    text ctx "'";
-    text ctx value.desc;
-    text ctx "'"
+    text ctx @@ "'" ^ value.desc ^ "'"
 
   | String values ->
     List.iter values ~f:(fun value -> string ctx value.desc)
@@ -853,7 +815,7 @@ let format contents node =
   iter fmt.fmt_define;
   iter fmt.fmt_type;
   iter fmt.fmt_record;
-  Context.newlines ctx;
+  Context.newline ctx ~ln:2;
   iter fmt.fmt_decls;
 
   Op.write buf @@ Context.contents ctx;

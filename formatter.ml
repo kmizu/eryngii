@@ -5,8 +5,6 @@ module Op = struct
 
   type t =
     | Nop
-    | Nest
-    | Unnest
     | Text of string
     | Space of int
     | Newline

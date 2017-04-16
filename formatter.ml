@@ -791,7 +791,19 @@ let rec write ctx node =
     text ctx "end";
     unnest ctx
 
-  | _ -> text ctx "(?)" (* failwith "not impl" *)
+  | Update exp ->
+    Option.iter exp.update_exp ~f:(write ctx);
+    text ctx @@ "#" ^ exp.update_name.desc ^ "{";
+    Seplist.iter exp.update_assocs
+      ~f:(fun sep assoc ->
+          text ctx @@ assoc.assoc_key.desc ^ " = ";
+          write ctx assoc.assoc_val;
+          write_sep sep ", ");
+    text ctx "}"
+
+  | Nop -> ()
+
+  | _ -> failwith "not impl"
 
 type formatted = {
   fmt_mod_name: Ast.t list;

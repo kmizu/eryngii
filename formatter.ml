@@ -737,6 +737,11 @@ let rec write ctx node =
   | Atom (`Enclosed value) ->
     text ctx @@ "'" ^ value.desc ^ "'"
 
+  | Char value ->
+    container ctx
+      ~enclose:("'", "'")
+      ~f:(fun _ -> text ctx value.desc)
+
   | String values ->
     List.iter values ~f:(fun value -> string ctx value.desc)
 

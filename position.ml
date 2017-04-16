@@ -11,3 +11,13 @@ let of_lexing_pos (pos : Lexing.position) =
     col = pos.pos_bol;
     offset = pos.pos_cnum;
   }
+
+let add pos ~length =
+  { pos with col = pos.col + length;
+             offset = pos.offset + length }
+
+let newline pos =
+  { line = pos.line + 1;
+    col = 0;
+    offset = pos.offset + 1;
+  }

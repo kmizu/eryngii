@@ -35,6 +35,7 @@ module Context = struct
   type t = {
     lines : string array;
     buf : Buffer.t;
+    mutable pos : Position.t;
     mutable ops : Op.t list;
     mutable indent : int list;
     mutable used_comments : Ast.text list;
@@ -47,6 +48,7 @@ module Context = struct
   let create lines buf =
     { lines = Array.of_list lines;
       buf;
+      pos = Position.zero;
       ops = [];
       indent = [0];
       used_comments = [];
@@ -89,6 +91,12 @@ module Context = struct
 
   let add ctx op =
     ctx.ops <- op :: ctx.ops;
+    ctx.pos <- begin match op with
+      | Text s -> Position.add ctx.pos ~length:(String.length s)
+      | Space n -> Position.add ctx.pos ~length:n
+      | Newline -> Position.newline ctx.pos
+      | _ -> ctx.pos
+    end;
     Option.iter ctx.count ~f:(fun count ->
         let add = 
           match op with

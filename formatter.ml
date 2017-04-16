@@ -151,17 +151,19 @@ module Context = struct
     in
     nest ctx ~indent:lv;
     begin match enclose with
-      | None -> ()
+      | None -> newline ctx
       | Some (open_, _) -> textln ctx open_
     end;
     f ();
-    newline ctx;
     unnest ctx;
+
+    (* newlines after close are not outputted *)
     begin match enclose with
       | None -> ()
       | Some (_, close) ->
+        newline ctx;
         indent ctx;
-        textln ctx close
+        text ctx close
     end
 
   let use_comment ctx com = 
@@ -261,13 +263,17 @@ let rec write ctx node =
   in
 
   let write_seplist ?(split=false) seplist sep =
-    Seplist.iter seplist ~f:(fun sep_opt node ->
-        if split then
-          indent ctx;
+    let len = Seplist.length seplist in
+    Seplist.iteri seplist ~f:(fun i sep_opt node ->
+        if split && i = 0 then begin
+          indent ctx
+        end;
         write ctx node;
         write_sep sep_opt sep;
-        if split then
-          newline ctx)
+        if split && i < len-1 then begin
+          newline ctx;
+          indent ctx
+        end)
   in
 
   let write_exp_list ?split exp_list =
@@ -328,8 +334,8 @@ let rec write ctx node =
       ~f:(fun _ ->
           text ctx " when ";
           write_guard @@ Option.value_exn clause.cr_clause_guard);
-    textln ctx " ->";
-    block ctx ~f:(fun () -> write_exp_list clause.cr_clause_body)
+    text ctx " ->";
+    block ctx ~f:(fun () -> write_exp_list clause.cr_clause_body ~split:true)
   in
 
   let write_cr_clauses clauses =
@@ -341,9 +347,9 @@ let rec write ctx node =
 
   let write_fun_clause clause =
     Option.iter clause.fun_clause_name ~f:(fun name -> text ctx name.desc);
-    text ctx "(";
-    write_patterns clause.fun_clause_ptns;
-    text ctx ") ";
+    container ctx
+      ~enclose:("(", ") ")
+      ~f:(fun () -> write_patterns clause.fun_clause_ptns);
     write_when_guard clause.fun_clause_when clause.fun_clause_guard;
     textln ctx "->";
     Seplist.iter clause.fun_clause_body ~f:(fun sep exp ->
@@ -591,7 +597,7 @@ let rec write ctx node =
 
   | Fun_decl decl ->
     block ctx ~f:(fun () -> write_fun_body decl.fun_decl_body);
-    textln ctx "." ~ln:2
+    textln ctx "."
 
   | If if_ ->
     block ctx
@@ -606,9 +612,9 @@ let rec write ctx node =
   | Case case ->
     text ctx "case ";
     write ctx case.case_exp;
-    textln ctx " of";
-    block ctx
-      ~f:(fun () -> write_cr_clauses case.case_clauses);
+    text ctx " of";
+    block ctx ~f:(fun () -> write_cr_clauses case.case_clauses);
+    newline ctx;
     indent ctx;
     text ctx "end"
 
@@ -627,13 +633,14 @@ let rec write ctx node =
                   write_exp_list after.recv_after_body)))
 
   | Try try_ ->
-    textln ctx "try ";
-    write_exp_list ~split:true try_.try_exps;
-    Option.iter try_.try_of ~f:(fun _ -> text ctx " of ");
+    text ctx "try";
+    block ctx ~f:(fun () -> write_exp_list ~split:true try_.try_exps);
+    Option.iter try_.try_of ~f:(fun _ -> text ctx " of");
+    newline ctx;
     let catch = try_.try_catch in
     Option.iter catch.try_catch_clauses ~f:(fun clauses ->
         indent ctx;
-        textln ctx "catch";
+        text ctx "catch";
         block ctx ~f:(fun () ->
             Seplist.iter clauses ~f:(fun sep clause ->
                 indent ctx;
@@ -645,11 +652,12 @@ let rec write ctx node =
                 Option.iter clause.try_clause_guard ~f:(fun (_when, guard) ->
                     text ctx " when ";
                     write_guard guard);
-                textln ctx " ->";
+                text ctx " ->";
                 block ctx
                   ~f:(fun () ->
                       write_exp_list ~split:true clause.try_clause_body))));
     (* TODO: after *)
+    newline ctx;
     indent ctx;
     text ctx "end"
 
@@ -715,17 +723,18 @@ let rec write ctx node =
     List.iter values ~f:(fun value -> string ctx value.desc)
 
   | Tuple tuple ->
-    text ctx "{";
-    write_exp_list tuple.enc_desc;
-    text ctx "}"
+    container ctx
+      ~enclose:("{", "}")
+      ~f:(fun () -> write_exp_list tuple.enc_desc)
 
   | List list ->
-    text ctx "[";
-    write_exp_list list.list_head;
-    Option.iter list.list_tail ~f:(fun tail ->
-        text ctx " | ";
-        write ctx tail);
-    text ctx "]"
+    container ctx
+      ~enclose:("[", "]")
+      ~f:(fun () ->
+          write_exp_list list.list_head;
+          Option.iter list.list_tail ~f:(fun tail ->
+              text ctx " | ";
+              write ctx tail))
 
   | Anon_fun f ->
     text ctx "fun";
@@ -828,7 +837,7 @@ let format contents node =
   iter fmt.fmt_type;
   iter fmt.fmt_record;
   Context.newline ctx ~ln:2;
-  iter fmt.fmt_decls;
+  iter fmt.fmt_decls ~newline:false;
 
   Op.write buf @@ Context.contents ctx;
   String.strip @@ Buffer.contents buf

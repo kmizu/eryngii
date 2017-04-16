@@ -147,18 +147,20 @@ module Context = struct
   let indent ctx =
     cur_indent ctx |> spaces ctx 
 
-  let nest ?(indent=4) ctx =
-    ctx.indent <- indent :: ctx.indent
+  let nest ?indent:size ctx =
+    let size = (Option.value size ~default:4) + cur_indent ctx in
+    ctx.indent <- size :: ctx.indent
 
   let unnest ctx =
     ctx.indent <- List.tl_exn ctx.indent
 
-  let block ?indent:lv ?enclose ctx ~f =
-    let lv = match lv with
-      | Some n -> n
-      | None -> 4 * List.length ctx.indent
+  let block ?indent:size ?enclose ctx ~f =
+    let size = (List.hd_exn ctx.indent) +
+               (match size with
+                | Some size -> size
+                | None -> 4)
     in
-    nest ctx ~indent:lv;
+    nest ctx ~indent:size;
     let pos = match enclose with
       | None ->
         let pos = ctx.pos in
@@ -766,9 +768,23 @@ let rec write ctx node =
         write ctx ty)
 
   | Anon_fun f ->
-    text ctx "fun";
-    write_fun_body f.anon_fun_body;
-    text ctx " end"
+    nest ctx ~indent:(ctx.pos.col - cur_indent ctx);
+    text ctx "fun ";
+    nest ctx ~indent:(ctx.pos.col - cur_indent ctx);
+    Seplist.iteri f.anon_fun_body
+      ~f:(fun i sep clause ->
+          if i > 0 then begin
+            indent ctx;
+          end;
+          nest ctx;
+          write_fun_clause clause;
+          write_sep sep ";\n";
+          unnest ctx);
+    unnest ctx;
+    newline ctx;
+    indent ctx;
+    text ctx "end";
+    unnest ctx
 
   | _ -> text ctx "(?)" (* failwith "not impl" *)
 

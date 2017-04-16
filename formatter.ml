@@ -736,6 +736,19 @@ let rec write ctx node =
               text ctx " | ";
               write ctx tail))
 
+  | Binary exps ->
+    container ctx
+      ~enclose:("<<", ">>")
+      ~f:(fun () -> write_exp_list exps.enc_desc)
+
+  | Binary_elt elt ->
+    write ctx elt.bin_elt_val;
+    Option.iter elt.bin_elt_size
+      ~f:(fun size -> text ctx @@ ":" ^ size.desc);
+    Option.iter elt.bin_elt_type ~f:(fun ty ->
+        text ctx "/";
+        write ctx ty)
+
   | Anon_fun f ->
     text ctx "fun";
     write_fun_body f.anon_fun_body;

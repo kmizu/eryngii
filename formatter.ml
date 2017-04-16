@@ -13,17 +13,20 @@ module Op = struct
 
   let write buf ops =
     let open Buffer in
-    ignore @@ List.fold_left ~init:Nop ops ~f:(fun prev op ->
-        begin match op with
-          | Text s -> add_string buf s
-          | Space n ->
-            for i = 0 to n-1 do
-              add_string buf " "
-            done
-          | Newline -> add_string buf "\n"
-          | _ -> ()
-        end;
-        op)
+    ignore @@ List.fold_left
+      ops
+      ~init:Nop 
+      ~f:(fun prev op ->
+          begin match op with
+            | Text s -> add_string buf s
+            | Space n ->
+              for i = 0 to n-1 do
+                add_string buf " "
+              done
+            | Newline -> add_string buf "\n"
+            | _ -> ()
+          end;
+          op)
 
 end
 

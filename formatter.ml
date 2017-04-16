@@ -122,7 +122,7 @@ module Context = struct
   let container ctx ~enclose ~f =
     let open_, close = enclose in
     text ctx open_;
-    f ();
+    f ctx.pos;
     text ctx close
 
   let atom ctx = function
@@ -161,11 +161,18 @@ module Context = struct
       | None -> 4 * List.length ctx.indent
     in
     nest ctx ~indent:lv;
-    begin match enclose with
-      | None -> newline ctx
-      | Some (open_, _) -> textln ctx open_
-    end;
-    f ();
+    let pos = match enclose with
+      | None ->
+        let pos = ctx.pos in
+        newline ctx;
+        pos
+      | Some (open_, _) ->
+        text ctx open_;
+        let pos = ctx.pos in
+        newline ctx;
+        pos
+    in
+    f pos;
     unnest ctx;
 
     (* newlines after close are not outputted *)
@@ -346,7 +353,7 @@ let rec write ctx node =
           text ctx " when ";
           write_guard @@ Option.value_exn clause.cr_clause_guard);
     text ctx " ->";
-    block ctx ~f:(fun () -> write_exp_list clause.cr_clause_body ~split:true)
+    block ctx ~f:(fun _ -> write_exp_list clause.cr_clause_body ~split:true)
   in
 
   let write_cr_clauses clauses =
@@ -360,7 +367,7 @@ let rec write ctx node =
     Option.iter clause.fun_clause_name ~f:(fun name -> text ctx name.desc);
     container ctx
       ~enclose:("(", ") ")
-      ~f:(fun () -> write_patterns clause.fun_clause_ptns);
+      ~f:(fun _ -> write_patterns clause.fun_clause_ptns);
     write_when_guard clause.fun_clause_when clause.fun_clause_guard;
     textln ctx "->";
     Seplist.iter clause.fun_clause_body ~f:(fun sep exp ->
@@ -524,19 +531,19 @@ let rec write ctx node =
   | Include_attr attr ->
     container ctx
       ~enclose:("-include(", ").")
-      ~f:(fun () -> string ctx attr.include_attr_file.desc);
+      ~f:(fun _ -> string ctx attr.include_attr_file.desc);
     newline ctx
 
   | Inclib_attr attr ->
     container ctx
       ~enclose:("-include_lib(", ").")
-      ~f:(fun () -> string ctx attr.inclib_attr_file.desc);
+      ~f:(fun _ -> string ctx attr.inclib_attr_file.desc);
     newline ctx
 
   | Define_attr attr ->
     container ctx
       ~enclose:("-define(", ").")
-      ~f:(fun () ->
+      ~f:(fun _ ->
           (*text ctx @@ Naming.uppercase attr.def_attr_name.desc;*)
           write_def_name attr.def_attr_name;
           text ctx ", ";
@@ -607,13 +614,13 @@ let rec write ctx node =
         | `Endif -> "endif.")
 
   | Fun_decl decl ->
-    block ctx ~f:(fun () -> write_fun_body decl.fun_decl_body);
+    block ctx ~f:(fun _ -> write_fun_body decl.fun_decl_body);
     textln ctx "."
 
   | If if_ ->
     block ctx
       ~enclose:("if", "end")
-      ~f:(fun () ->
+      ~f:(fun _ ->
           Seplist.iter if_.if_clauses ~f:(fun sep clause ->
               write_guard clause.if_clause_guard;
               text ctx " -> ";
@@ -624,7 +631,7 @@ let rec write ctx node =
     text ctx "case ";
     write ctx case.case_exp;
     text ctx " of";
-    block ctx ~f:(fun () -> write_cr_clauses case.case_clauses);
+    block ctx ~f:(fun _ -> write_cr_clauses case.case_clauses);
     newline ctx;
     indent ctx;
     text ctx "end"
@@ -632,12 +639,12 @@ let rec write ctx node =
   | Recv recv ->
     block ctx
       ~enclose:("receive", "end")
-      ~f:(fun () ->
+      ~f:(fun _ ->
           write_cr_clauses recv.recv_clauses;
           Option.iter recv.recv_after ~f:(fun after ->
               newline ctx;
               text ctx "after";
-              block ctx ~f:(fun () ->
+              block ctx ~f:(fun _ ->
                   indent ctx;
                   write ctx after.recv_after_timer;
                   text ctx " -> ";
@@ -645,14 +652,14 @@ let rec write ctx node =
 
   | Try try_ ->
     text ctx "try";
-    block ctx ~f:(fun () -> write_exp_list ~split:true try_.try_exps);
+    block ctx ~f:(fun _ -> write_exp_list ~split:true try_.try_exps);
     Option.iter try_.try_of ~f:(fun _ -> text ctx " of");
     newline ctx;
     let catch = try_.try_catch in
     Option.iter catch.try_catch_clauses ~f:(fun clauses ->
         indent ctx;
         text ctx "catch";
-        block ctx ~f:(fun () ->
+        block ctx ~f:(fun _ ->
             Seplist.iter clauses ~f:(fun sep clause ->
                 indent ctx;
                 Option.iter clause.try_clause_exn
@@ -665,7 +672,7 @@ let rec write ctx node =
                     write_guard guard);
                 text ctx " ->";
                 block ctx
-                  ~f:(fun () ->
+                  ~f:(fun _ ->
                       write_exp_list ~split:true clause.try_clause_body))));
     (* TODO: after *)
     newline ctx;
@@ -676,7 +683,7 @@ let rec write ctx node =
     write_fun_name call.call_fname;
     container ctx
       ~enclose:("(", ")")
-      ~f:(fun () -> write_exp_list call.call_args)
+      ~f:(fun _ -> write_exp_list call.call_args)
 
   | Unexp (op, exp) ->
     write_op op.desc;
@@ -693,7 +700,7 @@ let rec write ctx node =
   | List_compr compr ->
     container ctx
       ~enclose:("[", "]")
-      ~f:(fun () ->
+      ~f:(fun _ ->
           write ctx compr.compr_exp;
           text ctx " || ";
           write_exp_list compr.compr_quals)
@@ -706,12 +713,12 @@ let rec write ctx node =
   | Block exps ->
     block ctx
       ~enclose:("begin", "end")
-      ~f:(fun () -> write_exp_list ~split:true exps.enc_desc)
+      ~f:(fun _ -> write_exp_list ~split:true exps.enc_desc)
 
   | Paren paren ->
     container ctx
       ~enclose:("(", ")")
-      ~f:(fun () -> write ctx paren.enc_desc)
+      ~f:(fun _ -> write ctx paren.enc_desc)
 
   | Var name
   | Uscore name ->
@@ -736,12 +743,12 @@ let rec write ctx node =
   | Tuple tuple ->
     container ctx
       ~enclose:("{", "}")
-      ~f:(fun () -> write_exp_list tuple.enc_desc)
+      ~f:(fun _ -> write_exp_list tuple.enc_desc)
 
   | List list ->
     container ctx
       ~enclose:("[", "]")
-      ~f:(fun () ->
+      ~f:(fun _ ->
           write_exp_list list.list_head;
           Option.iter list.list_tail ~f:(fun tail ->
               text ctx " | ";
@@ -750,7 +757,7 @@ let rec write ctx node =
   | Binary exps ->
     container ctx
       ~enclose:("<<", ">>")
-      ~f:(fun () -> write_exp_list exps.enc_desc)
+      ~f:(fun _ -> write_exp_list exps.enc_desc)
 
   | Binary_elt elt ->
     write ctx elt.bin_elt_val;

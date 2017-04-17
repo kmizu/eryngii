@@ -648,6 +648,10 @@ let rec write ctx node =
     block ctx ~f:(fun _ -> write_fun_body decl.fun_decl_body);
     textln ctx "."
 
+  | Catch (_, exp) ->
+    text ctx "catch ";
+    write ctx exp
+
   | If if_ ->
     block ctx
       ~enclose:("if", "end")

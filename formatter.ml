@@ -796,6 +796,20 @@ let rec write ctx node =
           write_sep sep ", ");
     text ctx "}"
 
+  | Map map ->
+    Option.iter map.map_exp ~f:(write ctx);
+    container ctx
+      ~enclose:("#{", "}")
+      ~f:(fun _ ->
+          Seplist.opt_iter map.map_pairs ~f:(fun sep pair ->
+              write ctx pair.map_pair_key;
+              begin match pair.map_pair_op with
+                | `Update _ -> text ctx " := "
+                | `New _ -> text ctx " => "
+              end;
+              write ctx pair.map_pair_value;
+              write_sep sep ", "))
+
   | Nop -> ()
 
   | _ -> failwith "not impl"

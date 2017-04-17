@@ -811,7 +811,21 @@ let rec write ctx node =
       ~f:(fun size -> text ctx @@ ":" ^ size.desc);
     Option.iter elt.bin_elt_type ~f:(fun ty ->
         text ctx "/";
-        write ctx ty)
+        Seplist.iter ty ~f:(fun sep name ->
+            text ctx name.desc;
+            write_sep sep "-"))
+
+  | Binary_compr compr ->
+    text ctx "<<";
+    write ctx compr.compr_exp;
+    text ctx " || ";
+    write_exp_list compr.compr_quals;
+    text ctx ">>"
+
+  | Binary_compr_gen gen ->
+    write_pattern gen.bin_gen_ptn;
+    text ctx " -> ";
+    write ctx gen.bin_gen_exp
 
   | Module_fun f ->
     text ctx "fun ";
@@ -871,8 +885,6 @@ let rec write ctx node =
               write_sep sep ", "))
 
   | Nop -> ()
-
-  | _ -> failwith "not impl"
 
 type formatted = {
   fmt_mod_name: Ast.t list;

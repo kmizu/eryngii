@@ -155,12 +155,7 @@ module Context = struct
     ctx.indent <- List.tl_exn ctx.indent
 
   let block ?indent:size ?enclose ctx ~f =
-    let size = (List.hd_exn ctx.indent) +
-               (match size with
-                | Some size -> size
-                | None -> 4)
-    in
-    nest ctx ~indent:size;
+    nest ctx ?indent:size;
     let pos = match enclose with
       | None ->
         let pos = ctx.pos in

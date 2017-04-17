@@ -803,6 +803,16 @@ let rec write ctx node =
         text ctx "/";
         write ctx ty)
 
+  | Module_fun f ->
+    text ctx "fun ";
+    Option.iter f.module_fun_mname
+      ~f:(fun name ->
+          write ctx name;
+          text ctx ":");
+    write ctx f.module_fun_fname;
+    text ctx "/";
+    write ctx f.module_fun_arity
+
   | Anon_fun f ->
     nest ctx ~indent:(ctx.pos.col - cur_indent ctx);
     text ctx "fun ";

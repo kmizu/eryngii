@@ -705,7 +705,12 @@ let rec write ctx node =
                 block ctx
                   ~f:(fun _ ->
                       write_exp_list ~split:true clause.try_clause_body))));
-    (* TODO: after *)
+    Option.iter catch.try_catch_after ~f:(fun after ->
+        newline ctx;
+        indent ctx;
+        text ctx "after";
+        block ctx ~f:(fun _ ->
+            write_exp_list after.try_catch_after_exps ~split:true));
     newline ctx;
     indent ctx;
     text ctx "end"

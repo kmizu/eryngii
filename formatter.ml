@@ -587,6 +587,23 @@ let rec write ctx node =
     update ctx `Nop;
     dot_newline ctx
 
+  | Opaque_attr attr ->
+    start_count ctx;
+    text ctx @@ "-opaque " ^ attr.type_attr_name.desc ^ "(";
+    write_spec_args attr.type_attr_args;
+    text ctx ") :: ";
+    let count = end_count ctx - 2 in
+    begin match attr.type_attr_type with
+      | Union union ->
+        write_spec_type union.union_left;
+        update ctx (`Type_attr (count, 0));
+        write_spec_type union.union_right;
+      | other ->
+        write_spec_type other
+    end;
+    update ctx `Nop;
+    dot_newline ctx
+
   | Record_attr attr ->
     text ctx @@ "-record(" ^ attr.rec_attr_name.desc ^ ", {";
     (*rec_attr_fields : Spec_type.field node_list option;*)
@@ -869,7 +886,8 @@ let restruct_decls decls =
           { attrs with fmt_include = decl :: attrs.fmt_include }
         | Define_attr attr ->
           { attrs with fmt_define = decl :: attrs.fmt_define }
-        | Type_attr attr ->
+        | Type_attr attr
+        | Opaque_attr attr ->
           { attrs with fmt_type = decl :: attrs.fmt_type }
         | Record_attr attr ->
           { attrs with fmt_record = decl :: attrs.fmt_record }

@@ -150,15 +150,6 @@ module_attr:
   | behav_attr { $1 }
   | record_attr { $1 }
   | flow_macro_attr { $1 }
-  | MINUS LIDENT LPAREN exps RPAREN DOT
-  { Ast.Module_attr {
-      module_attr_minus = $1;
-      module_attr_tag = $2;
-      module_attr_open = $3;
-      module_attr_values = $4;
-      module_attr_close = $5;
-      module_attr_dot = $6 }
-  }
 
 modname_attr:
   | MODULE_ATTR LPAREN LIDENT RPAREN DOT
@@ -657,7 +648,7 @@ type_attr:
 
 opaque_attr:
   | OPAQUE_ATTR LIDENT LPAREN RPAREN COLON2 spec_type DOT
-  { Ast.Type_attr {
+  { Ast.Opaque_attr {
       type_attr_tag = $1;
       type_attr_name = $2;
       type_attr_open = $3;
@@ -669,7 +660,7 @@ opaque_attr:
     }
   }
   | OPAQUE_ATTR LIDENT LPAREN spec_args RPAREN COLON2 spec_type DOT
-  { Ast.Type_attr {
+  { Ast.Opaque_attr {
       type_attr_tag = $1;
       type_attr_name = $2;
       type_attr_open = $3;

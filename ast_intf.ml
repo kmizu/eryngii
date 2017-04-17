@@ -176,7 +176,6 @@ and op_desc =
 type t =
   | Nop (* internal use *)
   | Module of module_
-  | Module_attr of module_attr
   | Modname_attr of modname_attr
   | Export_attr of export_attr
   | Export_type_attr of export_attr

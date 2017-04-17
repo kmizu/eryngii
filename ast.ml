@@ -54,7 +54,6 @@ let rec start_pos node =
       | hd :: _ -> start_pos hd
     end
   | Modname_attr attr -> of_text attr.modname_attr_tag
-  | Module_attr attr -> of_text attr.module_attr_tag
   | Export_attr attr -> of_text attr.export_attr_tag
   | Export_type_attr attr -> of_text attr.export_attr_tag
   | Import_attr attr -> of_text attr.import_attr_tag

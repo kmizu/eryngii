@@ -132,6 +132,7 @@ rule read =
   | attr "opaque" { OPAQUE_ATTR (to_word lexbuf) }
   | attr "define" { DEFINE_ATTR (to_word lexbuf) }
   | attr "behaviour" { BEHAV_ATTR (to_word lexbuf) }
+  | attr "callback" { CALLBACK_ATTR (to_word lexbuf) }
   | attr "record" { RECORD_ATTR (to_word lexbuf) }
   | attr "undef" { UNDEF_ATTR (to_word lexbuf) }
   | attr "ifdef" { IFDEF_ATTR (to_word lexbuf) }

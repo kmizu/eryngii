@@ -22,6 +22,7 @@ let paren open_ value close =
 %token <Ast.text> INT
 %token <Ast.text> FLOAT
 %token <Ast.text> BEHAV_ATTR       (* "-behaviour" *)
+%token <Ast.text> CALLBACK_ATTR    (* "-callback" *)
 %token <Ast.text> DEFINE_ATTR      (* "-define" *)
 %token <Ast.text> EXPORT_ATTR      (* "-export" *)
 %token <Ast.text> EXPORT_TYPE_ATTR (* "-export_type" *)
@@ -149,6 +150,7 @@ module_attr:
   | opaque_attr { $1 }
   | behav_attr { $1 }
   | record_attr { $1 }
+  | callback_attr { $1 }
   | flow_macro_attr { $1 }
 
 modname_attr:
@@ -681,6 +683,15 @@ behav_attr:
       behav_attr_close = $4;
       behav_attr_dot = $5;
     }
+  }
+
+callback_attr:
+  | CALLBACK_ATTR LIDENT spec_clauses DOT
+  { Ast.(Callback_attr {
+      cb_attr_tag = $1;
+      cb_attr_name = $2;
+      cb_attr_clauses = $3;
+      cb_attr_dot = $4; })
   }
 
 record_attr:

@@ -619,6 +619,17 @@ let rec write ctx node =
               Option.iter sep ~f:(fun _ -> text ctx ", ")));
     textln ctx "})."
 
+  | Callback_attr attr ->
+    text ctx @@ "-callback " ^ attr.cb_attr_name.desc;
+    Seplist.iter attr.cb_attr_clauses
+      ~f:(fun sep clause ->
+          text ctx "(";
+          write_spec_args clause.spec_clause_args;
+          text ctx ") -> ";
+          write_spec_type clause.spec_clause_return;
+          write_sep sep ";");
+    dot_newline ctx
+
   | Flow_macro_attr attr ->
     text ctx "-";
     text ctx (match attr.flow_macro_attr_tag_type with
@@ -850,6 +861,7 @@ type formatted = {
   fmt_define : Ast.t list;
   fmt_type : Ast.t list;
   fmt_record : Ast.t list;
+  fmt_callback : Ast.t list;
   fmt_decls : Ast.t list;
 }
 
@@ -867,6 +879,7 @@ let restruct_decls decls =
             fmt_define = [];
             fmt_type = [];
             fmt_record = [];
+            fmt_callback = [];
             fmt_decls = [] }
     ~f:(fun attrs decl ->
         match decl with
@@ -891,6 +904,8 @@ let restruct_decls decls =
           { attrs with fmt_type = decl :: attrs.fmt_type }
         | Record_attr attr ->
           { attrs with fmt_record = decl :: attrs.fmt_record }
+        | Callback_attr attr ->
+          { attrs with fmt_callback = decl :: attrs.fmt_callback }
         | _ -> { attrs with fmt_decls = decl :: attrs.fmt_decls })
 
 let restruct node =
@@ -908,6 +923,7 @@ let restruct node =
       fmt_define = List.rev fmt.fmt_define;
       fmt_type = List.rev fmt.fmt_type;
       fmt_record = List.rev fmt.fmt_record;
+      fmt_callback = List.rev fmt.fmt_callback;
       fmt_decls = List.rev fmt.fmt_decls;
     }
   | _ -> failwith "must be module node"
@@ -933,6 +949,7 @@ let format contents node =
   iter fmt.fmt_define;
   iter fmt.fmt_type;
   iter fmt.fmt_record;
+  iter fmt.fmt_callback;
   Context.newline ctx ~ln:2;
   iter fmt.fmt_decls ~newline:false;
 

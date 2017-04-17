@@ -275,6 +275,14 @@ let rec write ctx node =
     | Some _ -> text ctx sep
   in
 
+  let write_sepln opt sep =
+    match opt with
+    | None -> ()
+    | Some _ ->
+      text ctx sep;
+      newline ctx
+  in
+
   let write_seplist ?(split=false) seplist sep =
     let len = Seplist.length seplist in
     Seplist.iteri seplist ~f:(fun i sep_opt node ->
@@ -355,7 +363,7 @@ let rec write ctx node =
     Seplist.iter clauses ~f:(fun sep clause ->
         indent ctx;
         write_cr_clause clause;
-        write_sep sep ";\n")
+        write_sepln sep ";")
   in
 
   let write_fun_clause clause =
@@ -368,14 +376,14 @@ let rec write ctx node =
     Seplist.iter clause.fun_clause_body ~f:(fun sep exp ->
         indent ctx;
         write ctx exp;
-        write_sep sep ",\n")
+        write_sepln sep ",")
   in
 
   let write_fun_body body =
     Seplist.iter body
       ~f:(fun sep clause ->
           write_fun_clause clause;
-          write_sep sep ";\n")
+          write_sepln sep ";")
   in
 
   let write_fun_name name =
@@ -620,7 +628,7 @@ let rec write ctx node =
               write_guard clause.if_clause_guard;
               text ctx " -> ";
               write_exp_list clause.if_clause_body;
-              Option.iter sep ~f:(fun _ -> text ctx ";\n")))
+              write_sepln sep ";"))
 
   | Case case ->
     text ctx "case ";
@@ -778,7 +786,7 @@ let rec write ctx node =
           end;
           nest ctx;
           write_fun_clause clause;
-          write_sep sep ";\n";
+          write_sepln sep ";";
           unnest ctx);
     unnest ctx;
     newline ctx;

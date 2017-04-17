@@ -704,7 +704,8 @@ let rec write ctx node =
                 text ctx " ->";
                 block ctx
                   ~f:(fun _ ->
-                      write_exp_list ~split:true clause.try_clause_body))));
+                      write_exp_list clause.try_clause_body ~split:true;
+                      write_sepln sep ";"))));
     Option.iter catch.try_catch_after ~f:(fun after ->
         newline ctx;
         indent ctx;

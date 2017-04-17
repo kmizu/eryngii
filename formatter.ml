@@ -838,6 +838,10 @@ let rec write ctx node =
     text ctx "end";
     unnest ctx
 
+  | Field field ->
+    Option.iter field.field_exp ~f:(write ctx);
+    text ctx @@ "#" ^ field.field_rname.desc ^ "." ^ field.field_fname.desc
+
   | Update exp ->
     Option.iter exp.update_exp ~f:(write ctx);
     text ctx @@ "#" ^ exp.update_name.desc ^ "{";

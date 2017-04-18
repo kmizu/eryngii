@@ -1172,7 +1172,7 @@ binary_elt:
       bin_elt_slash = None;
       bin_elt_type = None; })
   }
-  | binary_value COLON INT DIV binary_elt
+  | binary_value COLON INT DIV binary_type_specs
   { Ast.(Binary_elt {
       bin_elt_val = $1;
       bin_elt_colon = Some $2;
@@ -1180,7 +1180,7 @@ binary_elt:
       bin_elt_slash = Some $4;
       bin_elt_type = Some $5; })
   }
-  | binary_value DIV binary_elt
+  | binary_value DIV binary_type_specs
   { Ast.(Binary_elt {
       bin_elt_val = $1;
       bin_elt_colon = None;
@@ -1191,6 +1191,16 @@ binary_elt:
 
 binary_value:
   | primary_exp { $1 }
+
+binary_type_specs:
+  | rev_binary_type_specs { Seplist.rev $1 }
+
+rev_binary_type_specs:
+  | binary_type_spec { Seplist.one $1 }
+  | rev_binary_type_specs MINUS binary_type_spec { Seplist.cons $3 ~sep:$2 $1 }
+
+binary_type_spec:
+  | LIDENT { $1 }
 
 binary_compr:
   | DGT binary DBAR binary_compr_quals DLT

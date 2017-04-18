@@ -560,7 +560,7 @@ and binary_elt = {
   bin_elt_colon : token option;
   bin_elt_size : text option;
   bin_elt_slash : token option;
-  bin_elt_type : t option;
+  bin_elt_type : text_list option;
 }
 
 and macro = {

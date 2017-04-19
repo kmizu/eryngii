@@ -197,6 +197,7 @@ let format_comment node line =
   let prefix =
     match node with
     | Ast.Modname_attr _ -> "%%%"
+    | Compile_attr _
     | Export_attr _
     | Export_type_attr _
     | Import_attr _
@@ -291,6 +292,14 @@ let rec write ctx node =
           newline ctx;
           indent ctx
         end)
+  in
+
+  let write_atoms atoms ~indent =
+    block ctx ~indent ~openln:false ~f:(fun _ ->
+        Seplist.iter atoms ~f:(fun sep atom ->
+            let name = Ast.text_of_atom atom in
+            text ctx name.desc;
+            write_sep sep ", "))
   in
 
   let write_exp_list ?split exp_list =
@@ -510,6 +519,11 @@ let rec write ctx node =
 
   | Behav_attr attr ->
     textln ctx @@ "-behaviour(" ^ attr.behav_attr_name.desc ^ ")."
+
+  | Compile_attr attr ->
+    text ctx "-compile([";
+    write_atoms attr.compile_attr_names ~indent:10;
+    textln ctx "])."
 
   | Export_attr attr ->
     text ctx "-export([";

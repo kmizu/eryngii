@@ -23,6 +23,7 @@ let paren open_ value close =
 %token <Ast.text> FLOAT
 %token <Ast.text> BEHAV_ATTR       (* "-behaviour" *)
 %token <Ast.text> CALLBACK_ATTR    (* "-callback" *)
+%token <Ast.text> COMPILE_ATTR     (* "-compile" *)
 %token <Ast.text> DEFINE_ATTR      (* "-define" *)
 %token <Ast.text> EXPORT_ATTR      (* "-export" *)
 %token <Ast.text> EXPORT_TYPE_ATTR (* "-export_type" *)
@@ -139,6 +140,7 @@ module_decl:
 
 module_attr:
   | modname_attr { $1 }
+  | compile_attr { $1 }
   | export_attr { $1 }
   | export_type_attr { $1 }
   | import_attr { $1 }
@@ -163,6 +165,26 @@ modname_attr:
       modname_attr_dot = $5;
     }
   }
+
+compile_attr:
+  | COMPILE_ATTR LPAREN LBRACK raw_atoms RBRACK RPAREN DOT
+  { Ast.Compile_attr {
+      compile_attr_tag = $1;
+      compile_attr_open = $2;
+      compile_attr_name_open = $3;
+      compile_attr_names = $4;
+      compile_attr_name_close = $5;
+      compile_attr_close = $6;
+      compile_attr_dot = $7;
+    }
+  }
+
+raw_atoms:
+  | rev_raw_atoms { Seplist.rev $1 }
+
+rev_raw_atoms:
+  | raw_atom { Seplist.one $1 }
+  | rev_raw_atoms COMMA raw_atom { Seplist.cons $3 ~sep:$2 $1 }
 
 export_attr:
   | EXPORT_ATTR LPAREN LBRACK fun_sigs RBRACK RPAREN DOT

@@ -32,6 +32,7 @@ let paren open_ value close =
 %token <Ast.text> INCLIB_ATTR      (* "-include_lib" *)
 %token <Ast.text> MODULE_ATTR      (* "-module" *)
 %token <Ast.text> OPAQUE_ATTR      (* "-opaque" *)
+%token <Ast.text> OPT_CBS_ATTR     (* "-optional_callbacks" *)
 %token <Ast.text> SPEC_ATTR        (* "-spec" *)
 %token <Ast.text> TYPE_ATTR        (* "-type" *)
 %token <Ast.text> RECORD_ATTR      (* "-record" *)
@@ -150,6 +151,7 @@ module_attr:
   | spec_attr { $1 }
   | type_attr { $1 }
   | opaque_attr { $1 }
+  | opt_cbs_attr { $1 }
   | behav_attr { $1 }
   | record_attr { $1 }
   | callback_attr { $1 }
@@ -695,6 +697,20 @@ opaque_attr:
       type_attr_dot = $8;
     }
   }
+
+opt_cbs_attr:
+  | OPT_CBS_ATTR LPAREN LBRACK fun_sigs RBRACK RPAREN DOT
+  { Ast.Opt_cbs_attr {
+      opt_attr_tag = $1;
+      opt_attr_open = $2;
+      opt_attr_fun_open = $3;
+      opt_attr_funs = $4;
+      opt_attr_fun_close = $5;
+      opt_attr_close = $6;
+      opt_attr_dot = $7;
+    }
+  }
+
 
 behav_attr:
   | BEHAV_ATTR LPAREN LIDENT RPAREN DOT

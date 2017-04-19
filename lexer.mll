@@ -131,6 +131,7 @@ rule read =
   | attr "spec" { SPEC_ATTR (to_word lexbuf) }
   | attr "type" { TYPE_ATTR (to_word lexbuf) }
   | attr "opaque" { OPAQUE_ATTR (to_word lexbuf) }
+  | attr "optional_callbacks" { OPT_CBS_ATTR (to_word lexbuf) }
   | attr "define" { DEFINE_ATTR (to_word lexbuf) }
   | attr "behaviour" { BEHAV_ATTR (to_word lexbuf) }
   | attr "callback" { CALLBACK_ATTR (to_word lexbuf) }

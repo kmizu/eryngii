@@ -614,6 +614,11 @@ let rec write ctx node =
     update ctx `Nop;
     dot_newline ctx
 
+  | Opt_cbs_attr attr ->
+    text ctx "-optional_callbacks([";
+    write_fun_sigs attr.opt_attr_funs ~indent:21;
+    textln ctx "])."
+
   | Record_attr attr ->
     text ctx @@ "-record(" ^ attr.rec_attr_name.desc ^ ", {";
     (*rec_attr_fields : Spec_type.field node_list option;*)
@@ -908,6 +913,7 @@ type formatted = {
   fmt_type : Ast.t list;
   fmt_record : Ast.t list;
   fmt_callback : Ast.t list;
+  fmt_opt_cbs: Ast.t list;
   fmt_decls : Ast.t list;
 }
 
@@ -926,6 +932,7 @@ let restruct_decls decls =
             fmt_type = [];
             fmt_record = [];
             fmt_callback = [];
+            fmt_opt_cbs = [];
             fmt_decls = [] }
     ~f:(fun attrs decl ->
         match decl with
@@ -952,6 +959,8 @@ let restruct_decls decls =
           { attrs with fmt_record = decl :: attrs.fmt_record }
         | Callback_attr attr ->
           { attrs with fmt_callback = decl :: attrs.fmt_callback }
+        | Opt_cbs_attr attr ->
+          { attrs with fmt_opt_cbs = decl :: attrs.fmt_opt_cbs }
         | _ -> { attrs with fmt_decls = decl :: attrs.fmt_decls })
 
 let restruct node =
@@ -970,6 +979,7 @@ let restruct node =
       fmt_type = List.rev fmt.fmt_type;
       fmt_record = List.rev fmt.fmt_record;
       fmt_callback = List.rev fmt.fmt_callback;
+      fmt_opt_cbs = List.rev fmt.fmt_opt_cbs;
       fmt_decls = List.rev fmt.fmt_decls;
     }
   | _ -> failwith "must be module node"
@@ -996,6 +1006,7 @@ let format contents node =
   iter fmt.fmt_type;
   iter fmt.fmt_record;
   iter fmt.fmt_callback;
+  iter fmt.fmt_opt_cbs;
   Context.newline ctx ~ln:2;
   iter fmt.fmt_decls ~newline:false;
 

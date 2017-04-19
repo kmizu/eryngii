@@ -967,7 +967,7 @@ let format contents node =
 
   let iter ?(newline=true) nodes =
     List.iter nodes ~f:(write ctx);
-    if newline then
+    if List.length nodes > 0 && newline then
       Context.newline ctx
   in
 

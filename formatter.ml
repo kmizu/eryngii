@@ -154,29 +154,25 @@ module Context = struct
   let unnest ctx =
     ctx.indent <- List.tl_exn ctx.indent
 
-  let block ?indent:size ?enclose ctx ~f =
+  let block ?indent:size ?enclose ?(openln=true) ?(closeln=false) ctx ~f =
     nest ctx ?indent:size;
-    let pos = match enclose with
-      | None ->
-        let pos = ctx.pos in
-        newline ctx;
-        pos
-      | Some (open_, _) ->
-        text ctx open_;
-        let pos = ctx.pos in
-        newline ctx;
-        pos
-    in
+    Option.iter enclose ~f:(fun (open_, _) -> text ctx open_);
+    let pos = ctx.pos in
+    if openln then begin
+      newline ctx
+    end;
     f pos;
     unnest ctx;
 
-    (* newlines after close are not outputted *)
     begin match enclose with
       | None -> ()
       | Some (_, close) ->
         newline ctx;
         indent ctx;
         text ctx close
+    end;
+    if closeln then begin
+      newline ctx
     end
 
   let use_comment ctx com = 

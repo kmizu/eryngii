@@ -629,8 +629,9 @@ let rec write ctx node =
               Option.iter field.field_init ~f:(fun ty ->
                   text ctx " = ";
                   write_spec_type ty);
-              text ctx " :: ";
-              write_spec_type field.field_type;
+              Option.iter field.field_type ~f:(fun ty ->
+                  text ctx " :: ";
+                  write_spec_type ty);
               Option.iter sep ~f:(fun _ -> text ctx ", ")));
     textln ctx "})."
 

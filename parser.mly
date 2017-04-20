@@ -768,20 +768,36 @@ rev_type_fields:
   | rev_type_fields COMMA type_field { Seplist.cons $3 ~sep:$2 $1 }
 
 type_field:
+  | LIDENT
+  { { Ast.Spec_type.field_name = $1;
+        field_eq = None;
+        field_init = None;
+        field_colon = None;
+        field_type = None;
+    }
+  }
   | LIDENT COLON2 spec_type
   { { Ast.Spec_type.field_name = $1;
         field_eq = None;
         field_init = None;
-        field_colon = $2;
-        field_type = $3;
+        field_colon = Some $2;
+        field_type = Some $3;
+    }
+  }
+  | LIDENT EQ spec_type
+  { { Ast.Spec_type.field_name = $1;
+        field_eq = Some $2;
+        field_init = Some $3;
+        field_colon = None;
+        field_type = None;
     }
   }
   | LIDENT EQ spec_type COLON2 spec_type
   { { Ast.Spec_type.field_name = $1;
         field_eq = Some $2;
         field_init = Some $3;
-        field_colon = $4;
-        field_type = $5;
+        field_colon = Some $4;
+        field_type = Some $5;
     }
   }
 

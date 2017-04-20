@@ -116,8 +116,8 @@ module Spec_type = struct
     field_name : text;
     field_eq : token option;
     field_init : t option;
-    field_colon : token;
-    field_type : t;
+    field_colon : token option;
+    field_type : t option;
   }
 
   and union = {

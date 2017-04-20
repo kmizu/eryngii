@@ -177,6 +177,7 @@ type t =
   | Nop (* internal use *)
   | Module of module_
   | Modname_attr of modname_attr
+  | Compile_attr of compile_attr
   | Export_attr of export_attr
   | Export_type_attr of export_attr
   | Import_attr of import_attr
@@ -185,8 +186,10 @@ type t =
   | Spec_attr of spec_attr
   | Type_attr of type_attr
   | Opaque_attr of type_attr
+  | Opt_cbs_attr of opt_cbs_attr
   | Define_attr of define_attr
   | Behav_attr of behav_attr
+  | Callback_attr of callback_attr
   | Record_attr of record_attr
   | Flow_macro_attr of flow_macro_attr
   | Flow_attr of flow_attr
@@ -245,6 +248,16 @@ and modname_attr = {
   modname_attr_dot : token;
 }
 
+and compile_attr = {
+  compile_attr_tag : text;
+  compile_attr_open : token;
+  compile_attr_name_open : token;
+  compile_attr_names : atom node_list;
+  compile_attr_name_close : token;
+  compile_attr_close : token;
+  compile_attr_dot : token;
+}
+
 and export_attr = {
   export_attr_tag : text;
   export_attr_open : token;
@@ -287,6 +300,16 @@ and inclib_attr = {
   inclib_attr_file: text;
   inclib_attr_close : token;
   inclib_attr_dot : token;
+}
+
+and opt_cbs_attr = {
+  opt_attr_tag : text;
+  opt_attr_open : token;
+  opt_attr_fun_open : token;
+  opt_attr_funs : fun_sig node_list;
+  opt_attr_fun_close : token;
+  opt_attr_close : token;
+  opt_attr_dot : token;
 }
 
 and spec_attr = {
@@ -338,6 +361,13 @@ and behav_attr = {
   behav_attr_name : text;
   behav_attr_close : token;
   behav_attr_dot : token;
+}
+
+and callback_attr = {
+  cb_attr_tag : text;
+  cb_attr_name : text;
+  cb_attr_clauses : spec_clause node_list;
+  cb_attr_dot : token;
 }
 
 and record_attr = {

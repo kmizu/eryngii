@@ -54,6 +54,7 @@ let rec start_pos node =
       | hd :: _ -> start_pos hd
     end
   | Modname_attr attr -> of_text attr.modname_attr_tag
+  | Compile_attr attr -> of_text attr.compile_attr_tag
   | Export_attr attr -> of_text attr.export_attr_tag
   | Export_type_attr attr -> of_text attr.export_attr_tag
   | Import_attr attr -> of_text attr.import_attr_tag
@@ -62,8 +63,10 @@ let rec start_pos node =
   | Spec_attr attr -> of_text attr.spec_attr_tag
   | Type_attr attr -> of_text attr.type_attr_tag
   | Opaque_attr attr -> of_text attr.type_attr_tag
+  | Opt_cbs_attr attr -> of_text attr.opt_attr_tag
   | Define_attr attr -> of_text attr.def_attr_tag
   | Behav_attr attr -> of_text attr.behav_attr_tag
+  | Callback_attr attr -> of_text attr.cb_attr_tag
   | Record_attr attr -> of_text attr.rec_attr_tag
   | Flow_macro_attr attr -> of_text attr.flow_macro_attr_tag
   | Flow_attr attr -> of_text attr.flow_attr_tag

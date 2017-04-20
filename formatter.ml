@@ -597,6 +597,12 @@ let rec write ctx node =
     update ctx `Nop;
     dot_newline ctx
 
+  | Onload_attr attr ->
+    container ctx
+      ~enclose:("-on_load(", ").")
+      ~f:(fun _ -> write_fun_sig attr.onload_attr_fun);
+    newline ctx
+
   | Opaque_attr attr ->
     start_count ctx;
     text ctx @@ "-opaque " ^ attr.type_attr_name.desc ^ "(";
@@ -915,6 +921,7 @@ type formatted = {
   fmt_type : Ast.t list;
   fmt_record : Ast.t list;
   fmt_callback : Ast.t list;
+  fmt_onload: Ast.t list;
   fmt_opt_cbs: Ast.t list;
   fmt_decls : Ast.t list;
 }
@@ -935,6 +942,7 @@ let restruct_decls decls =
             fmt_type = [];
             fmt_record = [];
             fmt_callback = [];
+            fmt_onload = [];
             fmt_opt_cbs = [];
             fmt_decls = [] }
     ~f:(fun attrs decl ->
@@ -962,6 +970,8 @@ let restruct_decls decls =
           { attrs with fmt_type = decl :: attrs.fmt_type }
         | Record_attr attr ->
           { attrs with fmt_record = decl :: attrs.fmt_record }
+        | Onload_attr attr ->
+          { attrs with fmt_onload = decl :: attrs.fmt_onload }
         | Callback_attr attr ->
           { attrs with fmt_callback = decl :: attrs.fmt_callback }
         | Opt_cbs_attr attr ->
@@ -985,6 +995,7 @@ let restruct node =
       fmt_type = List.rev fmt.fmt_type;
       fmt_record = List.rev fmt.fmt_record;
       fmt_callback = List.rev fmt.fmt_callback;
+      fmt_onload = List.rev fmt.fmt_onload;
       fmt_opt_cbs = List.rev fmt.fmt_opt_cbs;
       fmt_decls = List.rev fmt.fmt_decls;
     }
@@ -1012,6 +1023,7 @@ let format contents node =
   iter fmt.fmt_define;
   iter fmt.fmt_type;
   iter fmt.fmt_record;
+  iter fmt.fmt_onload;
   iter fmt.fmt_callback;
   iter fmt.fmt_opt_cbs;
   Context.newline ctx ~ln:2;

@@ -185,6 +185,7 @@ type t =
   | Inclib_attr of inclib_attr
   | Spec_attr of spec_attr
   | Type_attr of type_attr
+  | Onload_attr of onload_attr
   | Opaque_attr of type_attr
   | Opt_cbs_attr of opt_cbs_attr
   | Define_attr of define_attr
@@ -300,6 +301,14 @@ and inclib_attr = {
   inclib_attr_file: text;
   inclib_attr_close : token;
   inclib_attr_dot : token;
+}
+
+and onload_attr = {
+  onload_attr_tag : text;
+  onload_attr_open : token;
+  onload_attr_fun : fun_sig;
+  onload_attr_close : token;
+  onload_attr_dot : token;
 }
 
 and opt_cbs_attr = {

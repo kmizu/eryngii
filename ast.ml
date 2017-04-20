@@ -62,6 +62,7 @@ let rec start_pos node =
   | Inclib_attr attr -> of_text attr.inclib_attr_tag
   | Spec_attr attr -> of_text attr.spec_attr_tag
   | Type_attr attr -> of_text attr.type_attr_tag
+  | Onload_attr attr -> of_text attr.onload_attr_tag
   | Opaque_attr attr -> of_text attr.type_attr_tag
   | Opt_cbs_attr attr -> of_text attr.opt_attr_tag
   | Define_attr attr -> of_text attr.def_attr_tag

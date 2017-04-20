@@ -31,6 +31,7 @@ let paren open_ value close =
 %token <Ast.text> INCLUDE_ATTR     (* "-include" *)
 %token <Ast.text> INCLIB_ATTR      (* "-include_lib" *)
 %token <Ast.text> MODULE_ATTR      (* "-module" *)
+%token <Ast.text> ONLOAD_ATTR      (* "-on_load" *)
 %token <Ast.text> OPAQUE_ATTR      (* "-opaque" *)
 %token <Ast.text> OPT_CBS_ATTR     (* "-optional_callbacks" *)
 %token <Ast.text> SPEC_ATTR        (* "-spec" *)
@@ -150,6 +151,7 @@ module_attr:
   | define_attr { $1 }
   | spec_attr { $1 }
   | type_attr { $1 }
+  | onload_attr { $1 }
   | opaque_attr { $1 }
   | opt_cbs_attr { $1 }
   | behav_attr { $1 }
@@ -669,6 +671,17 @@ type_attr:
       type_attr_colon = $6;
       type_attr_type = $7;
       type_attr_dot = $8;
+    }
+  }
+
+onload_attr:
+  | ONLOAD_ATTR LPAREN fun_sig RPAREN DOT
+  { Ast.Onload_attr {
+      onload_attr_tag = $1;
+      onload_attr_open = $2;
+      onload_attr_fun = $3;
+      onload_attr_close = $4;
+      onload_attr_dot = $5;
     }
   }
 

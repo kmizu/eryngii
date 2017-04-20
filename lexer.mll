@@ -130,6 +130,7 @@ rule read =
   | attr "include_lib"{ INCLIB_ATTR (to_word lexbuf) }
   | attr "spec" { SPEC_ATTR (to_word lexbuf) }
   | attr "type" { TYPE_ATTR (to_word lexbuf) }
+  | attr "on_load" { ONLOAD_ATTR (to_word lexbuf) }
   | attr "opaque" { OPAQUE_ATTR (to_word lexbuf) }
   | attr "optional_callbacks" { OPT_CBS_ATTR (to_word lexbuf) }
   | attr "define" { DEFINE_ATTR (to_word lexbuf) }

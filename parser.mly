@@ -42,6 +42,7 @@ let paren open_ value close =
 %token <Ast.text> IFNDEF_ATTR      (* "-ifndef" *)
 %token <Ast.text> ELSE_ATTR        (* "-else" *)
 %token <Ast.text> ENDIF_ATTR       (* "-endif" *)
+%token <Ast.text> USER_ATTR        (* other module attributes *)
 %token <Ast.token> LPAREN
 %token <Ast.token> RPAREN
 %token <Ast.token> LBRACK
@@ -158,6 +159,7 @@ module_attr:
   | record_attr { $1 }
   | callback_attr { $1 }
   | flow_macro_attr { $1 }
+  | user_attr { $1 }
 
 modname_attr:
   | MODULE_ATTR LPAREN LIDENT RPAREN DOT
@@ -857,6 +859,26 @@ flow_macro_attr:
       flow_attr_tag_type = `Endif;
       flow_attr_tag = $1;
       flow_attr_dot = $2;
+    }
+  }
+
+user_attr:
+  | USER_ATTR LPAREN RPAREN DOT
+  { Ast.User_attr {
+      user_attr_tag = $1;
+      user_attr_open = $2;
+      user_attr_values = None;
+      user_attr_close = $3;
+      user_attr_dot = $4;
+    }
+  }
+  | USER_ATTR LPAREN exps RPAREN DOT
+  { Ast.User_attr {
+      user_attr_tag = $1;
+      user_attr_open = $2;
+      user_attr_values = Some $3;
+      user_attr_close = $4;
+      user_attr_dot = $5;
     }
   }
 

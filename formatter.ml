@@ -666,6 +666,16 @@ let rec write ctx node =
         | `Else -> "else."
         | `Endif -> "endif.")
 
+  | User_attr attr ->
+    text ctx @@ String.rstrip attr.user_attr_tag.desc
+      ~drop:(fun c -> Option.is_some @@ String.index " \t\n\r" c);
+    container ctx
+      ~enclose:("(", ").")
+      ~f:(fun _ ->
+          Option.iter attr.user_attr_values
+            ~f:(fun exps -> write_exp_list exps ~split:false));
+    newline ctx
+
   | Fun_decl decl ->
     block ctx ~f:(fun _ -> write_fun_body decl.fun_decl_body);
     textln ctx "."

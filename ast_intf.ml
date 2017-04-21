@@ -192,6 +192,7 @@ type t =
   | Behav_attr of behav_attr
   | Callback_attr of callback_attr
   | Record_attr of record_attr
+  | User_attr of user_attr
   | Flow_macro_attr of flow_macro_attr
   | Flow_attr of flow_attr
   | Fun_decl of fun_decl
@@ -232,13 +233,12 @@ and module_ = {
   module_eof : token;
 }
 
-and module_attr = {
-  module_attr_minus : token;
-  module_attr_tag : text;
-  module_attr_open : token;
-  module_attr_values : exp_list;
-  module_attr_close : token;
-  module_attr_dot : token;
+and user_attr = {
+  user_attr_tag : text;
+  user_attr_open : token;
+  user_attr_values : exp_list option;
+  user_attr_close : token;
+  user_attr_dot : token;
 }
 
 and modname_attr = {

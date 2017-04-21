@@ -842,10 +842,7 @@ let rec write ctx node =
     Option.iter elt.bin_elt_size
       ~f:(fun size -> text ctx @@ ":" ^ size.desc);
     Option.iter elt.bin_elt_type ~f:(fun ty ->
-        text ctx "/";
-        Seplist.iter ty ~f:(fun sep name ->
-            text ctx name.desc;
-            write_sep sep "-"))
+        text ctx @@ "/" ^ ty.desc)
 
   | Binary_compr compr ->
     text ctx "<<";
@@ -1015,10 +1012,13 @@ let format contents node =
   let buf = Buffer.create 2000 in
   let ctx = Context.create contents buf in
   let fmt = restruct node in
+  let nattrs = ref 0 in
 
   let iter ?(newline=true) nodes =
     List.iter nodes ~f:(write ctx);
-    if List.length nodes > 0 && newline then
+    let len = List.length nodes in
+    nattrs := !nattrs + len;
+    if len > 0 && newline then
       Context.newline ctx
   in
 
@@ -1036,7 +1036,9 @@ let format contents node =
   iter fmt.fmt_onload;
   iter fmt.fmt_callback;
   iter fmt.fmt_opt_cbs;
-  Context.newline ctx ~ln:2;
+  if !nattrs > 0 then begin
+    Context.newline ctx
+  end;
   iter fmt.fmt_decls ~newline:false;
 
   Op.write buf @@ Context.contents ctx;

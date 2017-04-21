@@ -41,6 +41,7 @@ let uscore = '_' ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 let char = '$' ('\\' ['b' 'd' 'e' 'f' 'n' 's' 'r' 't' 'v' '\'' '"' '\\'] | _)
 let attr = '-' white*
 let comment = '%' [^'\r' '\n']*
+let bit_type = lower ('-' lower)*
 
 rule read =
   parse
@@ -121,6 +122,7 @@ rule read =
   | lower   { LIDENT (to_word lexbuf) }
   | upper   { UIDENT (to_word lexbuf) }
   | uscore  { USCORE (to_word lexbuf) }
+  | bit_type { BIT_TYPE (to_word lexbuf) }
   | attr "module" { MODULE_ATTR (to_word lexbuf) }
   | attr "compile" { COMPILE_ATTR (to_word lexbuf) }
   | attr "export" { EXPORT_ATTR (to_word lexbuf) }

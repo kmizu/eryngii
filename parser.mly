@@ -43,6 +43,7 @@ let paren open_ value close =
 %token <Ast.text> IFNDEF_ATTR      (* "-ifndef" *)
 %token <Ast.text> ELSE_ATTR        (* "-else" *)
 %token <Ast.text> ENDIF_ATTR       (* "-endif" *)
+%token <Ast.text> VSN_ATTR       (* "-vsn" *)
 %token <Ast.text> USER_ATTR        (* other module attributes *)
 %token <Ast.token> LPAREN
 %token <Ast.token> RPAREN
@@ -160,6 +161,7 @@ module_attr:
   | record_attr { $1 }
   | callback_attr { $1 }
   | flow_macro_attr { $1 }
+  | vsn_attr { $1 }
   | user_attr { $1 }
 
 modname_attr:
@@ -860,6 +862,17 @@ flow_macro_attr:
       flow_attr_tag_type = `Endif;
       flow_attr_tag = $1;
       flow_attr_dot = $2;
+    }
+  }
+
+vsn_attr:
+  | VSN_ATTR LPAREN exp RPAREN DOT
+  { Ast.Vsn_attr {
+      vsn_attr_tag = $1;
+      vsn_attr_open = $2;
+      vsn_attr_value = $3;
+      vsn_attr_close = $4;
+      vsn_attr_dot = $5;
     }
   }
 

@@ -676,6 +676,12 @@ let rec write ctx node =
             ~f:(fun exps -> write_exp_list exps ~split:false));
     newline ctx
 
+  | Vsn_attr attr ->
+    container ctx
+      ~enclose:("-vsn(", ").")
+      ~f:(fun _ -> write ctx attr.vsn_attr_value);
+    newline ctx
+
   | Fun_decl decl ->
     block ctx ~f:(fun _ -> write_fun_body decl.fun_decl_body);
     textln ctx "."
@@ -917,6 +923,7 @@ let rec write ctx node =
 
 type formatted = {
   fmt_mod_name: Ast.t list;
+  fmt_vsn: Ast.t list;
   fmt_behav : Ast.t list;
   fmt_compile : Ast.t list;
   fmt_export : Ast.t list;
@@ -938,6 +945,7 @@ let restruct_decls decls =
   List.fold_left
     decls
     ~init:{ fmt_mod_name = [];
+            fmt_vsn = [];
             fmt_behav = [];
             fmt_compile = [];
             fmt_export = [];
@@ -956,6 +964,8 @@ let restruct_decls decls =
         match decl with
         | Modname_attr attr ->
           { attrs with fmt_mod_name = decl :: attrs.fmt_mod_name }
+        | Vsn_attr attr ->
+          { attrs with fmt_vsn = decl :: attrs.fmt_vsn }
         | Behav_attr attr ->
           { attrs with fmt_behav = decl :: attrs.fmt_behav }
         | Compile_attr attr ->
@@ -991,6 +1001,7 @@ let restruct node =
   | Module m ->
     let fmt = restruct_decls m.module_decls in
     { fmt_mod_name = List.rev fmt.fmt_mod_name;
+      fmt_vsn = List.rev fmt.fmt_vsn;
       fmt_behav = List.rev fmt.fmt_behav;
       fmt_compile = List.rev fmt.fmt_compile;
       fmt_export = List.rev fmt.fmt_export;
@@ -1023,6 +1034,7 @@ let format contents node =
   in
 
   iter fmt.fmt_mod_name;
+  iter fmt.fmt_vsn;
   iter fmt.fmt_behav;
   iter fmt.fmt_compile;
   iter fmt.fmt_export;

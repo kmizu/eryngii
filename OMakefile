@@ -169,7 +169,7 @@ FILES[] =
 	position
 	seplist
 
-PROGRAM = eryngii
+PROGRAM = ei
 # OCAML_LIBS +=
 # OCAML_CLIBS +=
 # OCAML_OTHER_LIBS +=

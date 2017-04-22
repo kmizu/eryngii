@@ -1,6 +1,6 @@
 #!/bin/sh
 
-PROG=./eryngii
+PROG=./ei
 EXPECT_DIR=test/expect
 ACTUAL_DIR=test/actual
 

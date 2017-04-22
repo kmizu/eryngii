@@ -1,7 +1,7 @@
 open Core.Std
 open Printf
 
-let usage = "usage: eryngii <command> [parameters] [options]"
+let usage = "usage: ei <command> [parameters] [options]"
 
 let file_exists file =
   match Sys.file_exists ~follow_symlinks:true file with
@@ -124,7 +124,7 @@ let () =
   try
     Printexc.record_backtrace true;
     Command.run
-      ~version:(sprintf "eryngii %s" Conf.version)
+      ~version:(sprintf "ei %s" Conf.version)
       main
   with
   | e -> raise e

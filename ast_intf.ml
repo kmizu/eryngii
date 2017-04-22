@@ -193,6 +193,7 @@ type t =
   | Callback_attr of callback_attr
   | Record_attr of record_attr
   | User_attr of user_attr
+  | Vsn_attr of vsn_attr
   | Flow_macro_attr of flow_macro_attr
   | Flow_attr of flow_attr
   | Fun_decl of fun_decl
@@ -399,6 +400,15 @@ and flow_macro_attr = {
   flow_macro_attr_close : token;
   flow_macro_attr_dot : token;
 }
+
+and vsn_attr = {
+  vsn_attr_tag : text;
+  vsn_attr_open : token;
+  vsn_attr_value : t;
+  vsn_attr_close : token;
+  vsn_attr_dot : token;
+}
+
 and flow_attr = {
   flow_attr_tag_type : [`Else | `Endif];
   flow_attr_tag : text;

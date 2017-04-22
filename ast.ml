@@ -72,6 +72,7 @@ let rec start_pos node =
   | Flow_macro_attr attr -> of_text attr.flow_macro_attr_tag
   | Flow_attr attr -> of_text attr.flow_attr_tag
   | User_attr attr -> of_text attr.user_attr_tag
+  | Vsn_attr attr -> of_text attr.vsn_attr_tag
   | Fun_decl decl -> of_fun_clause @@ Seplist.hd_exn decl.fun_decl_body
   | Catch (tok, _) -> tok.start
   | Block exps -> start_pos @@ Seplist.hd_exn exps.enc_desc

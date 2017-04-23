@@ -21,14 +21,14 @@ let parse_file file ~f =
       ~f:(fun chan ->
           let buf = Lexing.from_channel chan in
           try begin
-            let lines =
+            let file =
               In_channel.create file
               |> In_channel.input_all
-              |> String.split_lines
+              |> File.create
             in
-            Annot.init @@ List.length lines;
+            Annot.init @@ Array.length file.lines;
             let node = Parser.prog Lexer.read buf in
-            f lines node
+            f file node
           end with
           | Lexer.Syntax_error (pos, msg) ->
             let open Position in
@@ -53,9 +53,9 @@ let main =
     )
     (fun debug verbose syntax file () ->
        parse_file file
-         ~f:(fun lines node ->
+         ~f:(fun file node ->
              if not syntax then begin
-               let fmt = Formatter.format lines node in
+               let fmt = Formatter.format file node in
                printf "%s\n" fmt
              end))
 

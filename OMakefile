@@ -159,6 +159,7 @@ FILES[] =
 	ast
 	ast_intf
 	conf
+	file
 	formatter
 	lexer
 	located

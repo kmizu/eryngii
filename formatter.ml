@@ -31,7 +31,7 @@ end
 module Context = struct
 
   type t = {
-    lines : string array;
+    file : File.t;
     buf : Buffer.t;
     mutable pos : Position.t;
     mutable ops : Op.t list;
@@ -43,8 +43,8 @@ module Context = struct
                     ]; 
   }
 
-  let create lines buf =
-    { lines = Array.of_list lines;
+  let create file buf =
+    { file;
       buf;
       pos = Position.zero;
       ops = [];
@@ -244,7 +244,7 @@ let write_comment ctx node =
                   (i', true, s :: accu)
               end
             | None ->
-              let line = String.strip @@ Array.get ctx.lines i in
+              let line = String.strip @@ Array.get ctx.file.lines i in
               if String.is_empty line then
                 (i', true, accu)
               else if not (String.is_prefix line ~prefix:"%") then
@@ -1025,9 +1025,9 @@ let restruct node =
     }
   | _ -> failwith "must be module node"
 
-let format contents node =
+let format file node =
   let buf = Buffer.create 2000 in
-  let ctx = Context.create contents buf in
+  let ctx = Context.create file buf in
   let fmt = restruct node in
   let nattrs = ref 0 in
 

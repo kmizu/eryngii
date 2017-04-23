@@ -40,6 +40,7 @@ module Spec_type = struct
     | Record of record
     | Union of union
     | Constraint of constr
+    | Macro of token * text
 
   and range = {
     range_start : text;

@@ -402,6 +402,8 @@ spec_type:
   }
   | LBRACK RBRACK
   { Ast.Spec_type.Nil ($1, $2) }
+  | Q macro_name
+  { Ast.Spec_type.Macro ($1, $2) }
 
 spec_type_constraint:
   | UIDENT COLON2 spec_type

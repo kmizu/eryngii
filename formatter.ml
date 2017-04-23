@@ -490,6 +490,12 @@ let rec write ctx node =
         | _ -> text ctx " | "
       end;
       write_spec_type union.union_right
+    | Paren ty ->
+      container ctx
+        ~enclose:("(", ")")
+        ~f:(fun _ -> write_spec_type ty.enc_desc)
+    | Macro (_, name) ->
+      text ctx @@ "?" ^ name.desc
     | _ -> ()
   in
 

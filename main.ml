@@ -41,32 +41,23 @@ let parse_file file ~f =
             exit (-1)
           | e -> raise e)
 
-let fmt =
+let main =
   Command.basic
-    ~summary: "formats a source file"
+    ~summary:usage
     Command.Spec.(
       empty
       +> flag "-d" no_arg ~doc:" debug output"
       +> flag "-v" no_arg ~doc:" print verbose message"
+      +> flag "-syntax" no_arg ~doc:" check syntax only"
       +> anon (maybe ("filename" %: string))
     )
-    (fun debug verbose file () ->
+    (fun debug verbose syntax file () ->
        parse_file file
          ~f:(fun lines node ->
-             let fmt = Formatter.format lines node in
-             printf "%s\n" fmt))
-
-let syntax =
-  Command.basic
-    ~summary: "check syntax of a source file"
-    Command.Spec.(
-      empty
-      +> flag "-d" no_arg ~doc:" debug output"
-      +> flag "-v" no_arg ~doc:" print verbose message"
-      +> anon (maybe ("filename" %: string))
-    )
-    (fun debug verbose file () ->
-       parse_file file ~f:(fun _ _ -> ()))
+             if not syntax then begin
+               let fmt = Formatter.format lines node in
+               printf "%s\n" fmt
+             end))
 
 let test_format =
   Command.basic
@@ -110,15 +101,6 @@ let test_format =
                |> String.split_lines
              in
              compare 0 ex ac))
-
-let main =
-  Command.group
-    ~summary:usage
-    [
-      ("fmt", fmt);
-      ("syntax", syntax);
-      ("testfmt", test_format);
-    ]
 
 let () =
   try

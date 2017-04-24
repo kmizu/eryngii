@@ -25,3 +25,64 @@ let create contents =
           | _ -> lines)
   in
   { contents; length; lines; line_offsets }
+
+let is_space = function
+  | ' ' | '\t' -> true
+  | _ -> false
+
+let is_newline = function
+  | '\r' | '\n' -> true
+  | _ -> false
+
+let is_ignored c =
+  is_space c || is_newline c
+
+let is_comment c = c = '%'
+
+let is_token c =
+  not @@ is_space c || is_newline c || is_comment c
+
+type eol = [
+  | `Continue
+  | `Comment of string option * string list (* eol_comment * bol_comment *)
+]
+
+let eol file i =
+  let rec next i state =
+    let i' = i + 1 in
+    if i' < file.length then begin
+      match (state, String.get file.contents i') with
+      | `Continue, c when is_space c ->
+        next i' state
+      | `Continue, c when is_comment c ->
+        next i' @@ `Eol_comment (Buffer.create 16)
+      | `Continue, c when is_newline c ->
+        next i' @@ `Bol (None, [])
+      | `Eol_comment buf, c when is_newline c ->
+        next i' @@ `Bol (Some (Buffer.contents buf), [])
+      | `Eol_comment buf, c ->
+        Buffer.add_char buf c;
+        next i' (`Eol_comment buf)
+      | `Bol (eol, bols), c when is_comment c ->
+        next i' @@ `Bol_comment (eol, bols, Buffer.create 16)
+      | `Bol (eol, bols), c when is_ignored c ->
+        next i' @@ `Bol (eol, bols)
+      | `Bol_comment (eol, bols, buf), c when is_newline c ->
+        next i' @@ `Bol (eol, Buffer.contents buf :: bols)
+      | `Bol_comment (eol, bols, buf), c ->
+        Buffer.add_char buf c;
+        next i' @@ `Bol_comment (eol, bols, buf)
+      | _ -> state
+    end else
+      state
+  in
+  match next i `Continue with
+  | `Continue ->
+    `Continue
+  | `Eol_comment buf ->
+    `Comment (Some (Buffer.contents buf), [])
+  | `Bol (eol, bols) ->
+    `Comment (eol, List.rev bols)
+  | `Bol_comment (eol, bols, buf) ->
+    `Comment (eol, List.rev (Buffer.contents buf :: bols))
+

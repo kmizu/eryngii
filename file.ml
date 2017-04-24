@@ -2,11 +2,13 @@ open Core.Std
 
 type t = {
   contents : string;
+  length : int;
   lines : string array;
   line_offsets : int list;
 }
 
 let create contents =
+  let length = String.length contents in
   let lines = String.split_lines contents |> Array.of_list in
   let line_offsets = String.foldi contents
       ~init:[0]
@@ -22,4 +24,4 @@ let create contents =
               i :: lines
           | _ -> lines)
   in
-  { contents; lines; line_offsets }
+  { contents; length; lines; line_offsets }

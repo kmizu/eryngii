@@ -1039,6 +1039,9 @@ let format file node =
       Context.newline ctx
   in
 
+  Option.iter (File.module_comment ctx.file)
+    ~f:(List.iter ~f:(Context.module_comment ctx));
+
   iter fmt.fmt_mod_name;
   iter fmt.fmt_vsn;
   iter fmt.fmt_behav;

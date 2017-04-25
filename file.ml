@@ -42,12 +42,17 @@ let is_comment c = c = '%'
 let is_token c =
   not @@ is_space c || is_newline c || is_comment c
 
-type eol = [
+type comment = [
   | `Continue
+  | `Newlines
   | `Comment of string option * string list (* eol_comment * bol_comment *)
 ]
 
-let eol file i =
+let strip_comment s =
+  String.lstrip s ~drop:(fun c -> c = '%')
+  |> String.lstrip ~drop:(fun c -> c = ' ')
+
+let comment file i =
   let rec next i state =
     let i' = i + 1 in
     if i' < file.length then begin
@@ -76,13 +81,28 @@ let eol file i =
     end else
       state
   in
+
+  let strip_eol comment =
+    Option.value_map comment
+      ~default:comment
+      ~f:(fun s -> Some (strip_comment s))
+  in
+
   match next i `Continue with
   | `Continue ->
     `Continue
   | `Eol_comment buf ->
-    `Comment (Some (Buffer.contents buf), [])
+    `Comment (Some (Buffer.contents buf |> strip_comment), [])
+  | `Bol (None, []) ->
+    `Newlines
   | `Bol (eol, bols) ->
-    `Comment (eol, List.rev bols)
+    `Comment (strip_eol eol,
+              List.rev_map bols ~f:strip_comment)
   | `Bol_comment (eol, bols, buf) ->
-    `Comment (eol, List.rev (Buffer.contents buf :: bols))
+    `Comment (strip_eol eol,
+              List.rev_map (Buffer.contents buf :: bols) ~f:strip_comment)
 
+let module_comment file =
+  match comment file 0 with
+  | `Comment (Some eol, bols) -> Some (eol :: bols)
+  | _ -> None

@@ -265,10 +265,7 @@ let rec write ctx node =
   let open Ast_intf in
   let open Context in
   let open Located in
-
-  let iter nodes =
-    List.iter nodes ~f:(fun node -> write ctx node)
-  in
+  let open Location in
 
   let write_sep opt sep =
     match opt with
@@ -337,13 +334,24 @@ let rec write ctx node =
             write_fun_sig fsig;
             write_sep sep ", ")
     else
+      let lined = ref false in
       Seplist.iteri fsigs
         ~f:(fun i sep fsig ->
             if i > 0 then begin
               text ctx @@ String.make indent ' '
             end;
             write_fun_sig fsig;
-            write_sep sep ",";
+            Option.iter sep ~f:(fun sep ->
+                text ctx ",";
+                Option.iter
+                  (File.next_char ctx.file sep.start.offset ~newline:true)
+                  ~f:(fun c ->
+                      match c with
+                      | `Newline ->
+                        lined := true; 
+                        newline ctx
+                      | _ -> ())
+              );
             if i+1 < len then
               newline ctx)
   in

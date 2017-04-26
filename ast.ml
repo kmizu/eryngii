@@ -118,3 +118,95 @@ let rec start_pos node =
   | Int value
   | Float value -> of_text value
   | Nop -> Position.zero
+
+let rec end_pos node =
+  let open Located in
+  let open Location in
+
+  let of_loc loc =
+    (Option.value_exn loc).end_
+  in
+
+  let of_text text =
+    of_loc text.loc
+  in
+
+  let of_fun_clause clause =
+    match clause.fun_clause_name with
+    | Some name -> of_text name
+    | None -> clause.fun_clause_open.end_
+  in
+
+  match node with
+  | Module m ->
+    begin match m.module_decls with
+      | [] -> m.module_eof.end_
+      | hd :: _ -> end_pos hd
+    end
+  | Modname_attr attr -> attr.modname_attr_dot.end_
+  | Compile_attr attr -> attr.compile_attr_dot.end_
+  | Export_attr attr -> attr.export_attr_dot.end_
+  | Export_type_attr attr -> attr.export_attr_dot.end_
+  | Import_attr attr -> attr.import_attr_dot.end_
+  | Include_attr attr -> attr.include_attr_dot.end_
+  | Inclib_attr attr -> attr.inclib_attr_dot.end_
+  | Spec_attr attr -> attr.spec_attr_dot.end_
+  | Type_attr attr -> attr.type_attr_dot.end_
+  | Onload_attr attr -> attr.onload_attr_dot.end_
+  | Opaque_attr attr -> attr.type_attr_dot.end_
+  | Opt_cbs_attr attr -> attr.opt_attr_dot.end_
+  | Define_attr attr -> attr.def_attr_dot.end_
+  | Behav_attr attr -> attr.behav_attr_dot.end_
+  | Callback_attr attr -> attr.cb_attr_dot.end_
+  | Record_attr attr -> attr.rec_attr_dot.end_
+  | Flow_macro_attr attr -> attr.flow_macro_attr_dot.end_
+  | Flow_attr attr -> attr.flow_attr_dot.end_
+  | User_attr attr -> attr.user_attr_dot.end_
+  | Vsn_attr attr -> attr.vsn_attr_dot.end_
+
+  (* TODO *)
+  | Fun_decl decl -> of_fun_clause @@ Seplist.hd_exn decl.fun_decl_body
+  | Catch (tok, _) -> tok.start
+  | Block exps -> start_pos @@ Seplist.hd_exn exps.enc_desc
+  | If if_ -> if_.if_begin.start
+  | Case case -> case.case_begin.start
+  | Recv recv -> recv.recv_begin.start
+  | Try try_ -> try_.try_begin.start
+  | Anon_fun f -> f.anon_fun_begin.start
+  | Module_fun f -> f.module_fun_prefix.start
+  | Unexp (op, _) -> of_loc op.loc
+  | Binexp exp -> start_pos exp.binexp_left
+  | Call call ->
+    start_pos @@ Option.value
+      call.call_fname.fun_name_mname
+      ~default:call.call_fname.fun_name_fname
+  | Paren exp -> exp.enc_open.start
+  | Atom atom -> of_text @@ text_of_atom atom
+  | String values -> of_text (List.hd_exn values)
+  | List list -> list.list_open.start
+  | Binary exp -> exp.enc_open.start
+  | Binary_elt elt -> start_pos elt.bin_elt_val
+  | Tuple exp -> exp.enc_open.start
+  | Field field ->
+    begin match field.field_exp with
+      | None -> field.field_sharp.start
+      | Some node -> start_pos node
+    end
+  | Update update ->
+    begin match update.update_exp with
+      | None -> update.update_sharp.start
+      | Some node -> start_pos node
+    end
+  | List_compr compr
+  | Binary_compr compr ->
+    compr.compr_open.start
+  | List_compr_gen gen -> start_pos gen.gen_ptn
+  | Binary_compr_gen gen -> start_pos gen.bin_gen_ptn
+  | Map map -> map.map_nsign.start
+  | Macro m -> m.macro_q.start
+  | Uscore value
+  | Var value
+  | Char value
+  | Int value
+  | Float value -> of_text value
+  | Nop -> Position.zero

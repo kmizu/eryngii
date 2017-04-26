@@ -121,6 +121,12 @@ module Context = struct
     text ctx "%%% ";
     textln ctx s
 
+  let eol_comment ctx s =
+    textln ctx @@ "  %% " ^ s
+
+  let bol_comment ctx list =
+    List.iter list ~f:(fun s -> textln ctx @@ "%% " ^ s)
+
   let container ctx ~enclose ~f =
     let open_, close = enclose in
     text ctx open_;
@@ -527,7 +533,8 @@ let rec write ctx node =
         text ctx ")")
   in
 
-  write_comment ctx node;
+  (* TODO: replace *)
+  (*write_comment ctx node;*)
 
   match node with
   | Module m ->
@@ -1045,7 +1052,15 @@ let format file node =
   let nattrs = ref 0 in
 
   let iter ?(newline=true) nodes =
-    List.iter nodes ~f:(write ctx);
+    List.iter nodes ~f:(fun node ->
+        write ctx node;
+        let pos = Ast.end_pos node in
+        match File.comment ctx.file pos.offset with
+        | `Comment (eol, bols) ->
+          Option.iter eol ~f:(Context.eol_comment ctx);
+          Context.newline ctx;
+          Context.bol_comment ctx bols;
+        | _ -> ());
     let len = List.length nodes in
     nattrs := !nattrs + len;
     if len > 0 && newline then

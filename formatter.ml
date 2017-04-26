@@ -518,7 +518,8 @@ let rec write ctx node =
   write_comment ctx node;
 
   match node with
-  | Module m -> iter m.module_decls
+  | Module m ->
+    failwith "not executed"
 
   | Modname_attr attr ->
     textln ctx @@ "-module(" ^ attr.modname_attr_name.desc ^ ")."

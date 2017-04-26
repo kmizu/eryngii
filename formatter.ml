@@ -117,6 +117,10 @@ module Context = struct
     add ctx @@ Op.Text s;
     newline ctx ~ln
 
+  let module_comment ctx s =
+    text ctx "%%% ";
+    textln ctx s
+
   let container ctx ~enclose ~f =
     let open_, close = enclose in
     text ctx open_;

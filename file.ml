@@ -42,6 +42,21 @@ let is_comment c = c = '%'
 let is_token c =
   not @@ is_space c || is_newline c || is_comment c
 
+let rec next_char ?(space=false) ?(newline=false) file i =
+  let i = i + 1 in
+  if i+1 < file.length then
+    match String.get file.contents i with
+    | c when (is_space c && not space) ||
+             (is_newline c && not newline) ->
+      next_char ~space ~newline file (i+1)
+    | ' ' -> Some `Space
+    | '\t' -> Some `Tab
+    | '%' -> Some `Comment
+    | c when is_newline c -> Some `Newline
+    | c -> Some `Other
+  else
+    None
+
 type comment = [
   | `Continue
   | `Newlines

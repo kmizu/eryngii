@@ -32,7 +32,6 @@ module Context = struct
 
   type t = {
     file : File.t;
-    buf : Buffer.t;
     mutable pos : Position.t;
     mutable ops : Op.t list;
     mutable indent : int list;
@@ -43,9 +42,8 @@ module Context = struct
                     ]; 
   }
 
-  let create file buf =
+  let create file =
     { file;
-      buf;
       pos = Position.zero;
       ops = [];
       indent = [0];
@@ -56,6 +54,12 @@ module Context = struct
 
   let contents ctx =
     List.rev ctx.ops
+
+  let output ctx buf =
+    Op.write buf @@ contents ctx
+
+  let clear ctx =
+    ctx.ops <- []
 
   let start_count ctx =
     match ctx.count with
@@ -709,8 +713,10 @@ let rec write ctx node =
     newline ctx
 
   | Fun_decl decl ->
-    block ctx ~f:(fun _ -> write_fun_body decl.fun_decl_body);
-    textln ctx "."
+    block ctx
+      ~openln:false
+      ~f:(fun _ -> write_fun_body decl.fun_decl_body);
+    textln ctx "." ~ln:2
 
   | Catch (_, exp) ->
     text ctx "catch ";
@@ -1046,50 +1052,68 @@ let restruct node =
   | _ -> failwith "must be module node"
 
 let format file node =
-  let buf = Buffer.create 2000 in
-  let ctx = Context.create file buf in
+  let ctx = Context.create file in
   let fmt = restruct node in
-  let nattrs = ref 0 in
 
-  let iter ?(newline=true) nodes =
-    List.iter nodes ~f:(fun node ->
-        write ctx node;
-        let pos = Ast.end_pos node in
+  let format_attrs ?(newline=true) attrs rest =
+    let has_bol = ref false in
+    let len = List.length attrs in
+    let rest = rest - len in
+
+    List.iter attrs ~f:(fun attr ->
+        write ctx attr;
+        let pos = Ast.end_pos attr in
         match File.comment ctx.file pos.offset with
         | `Comment (eol, bols) ->
           Option.iter eol ~f:(Context.eol_comment ctx);
           Context.newline ctx;
+          if rest = 0 then begin
+            Context.newline ctx;
+          end;
           Context.bol_comment ctx bols;
+          if List.length bols > 0 then
+            has_bol := true
         | _ -> ());
-    let len = List.length nodes in
-    nattrs := !nattrs + len;
-    if len > 0 && newline then
+
+    if not !has_bol && len > 0 && newline && rest > 0 then begin
       Context.newline ctx
+    end;
+    rest
   in
 
   Option.iter (File.module_comment ctx.file)
     ~f:(List.iter ~f:(Context.module_comment ctx));
 
-  iter fmt.fmt_mod_name;
-  iter fmt.fmt_vsn;
-  iter fmt.fmt_behav;
-  iter fmt.fmt_compile;
-  iter fmt.fmt_export;
-  iter fmt.fmt_export_type;
-  iter fmt.fmt_import;
-  iter fmt.fmt_inclib;
-  iter fmt.fmt_include;
-  iter fmt.fmt_define;
-  iter fmt.fmt_type;
-  iter fmt.fmt_record;
-  iter fmt.fmt_onload;
-  iter fmt.fmt_callback;
-  iter fmt.fmt_opt_cbs;
-  if !nattrs > 0 then begin
-    Context.newline ctx
-  end;
-  iter fmt.fmt_decls ~newline:false;
+  let all_attrs = [fmt.fmt_mod_name;
+                   fmt.fmt_vsn;
+                   fmt.fmt_behav;
+                   fmt.fmt_compile;
+                   fmt.fmt_export;
+                   fmt.fmt_export_type;
+                   fmt.fmt_import;
+                   fmt.fmt_inclib;
+                   fmt.fmt_include;
+                   fmt.fmt_define;
+                   fmt.fmt_type;
+                   fmt.fmt_record;
+                   fmt.fmt_onload;
+                   fmt.fmt_callback;
+                   fmt.fmt_opt_cbs]
+  in
+  let nattrs = List.fold_left all_attrs
+      ~init:0
+      ~f:(fun accu attrs -> accu + List.length attrs)
+  in
 
-  Op.write buf @@ Context.contents ctx;
-  String.strip @@ Buffer.contents buf
+  ignore @@ List.fold_left all_attrs 
+    ~init:nattrs
+    ~f:(fun rest attrs -> format_attrs attrs rest);
+
+  ignore @@ format_attrs fmt.fmt_decls
+    ~newline:false
+    10000; (* adhoc *)
+
+  let buf = Buffer.create 2000 in
+  Context.output ctx buf;
+  Buffer.contents buf |> String.strip
 

@@ -18,6 +18,9 @@ let create (start : Position.t) (end_ : Position.t) =
 let zero =
   create Position.zero Position.zero
 
+let offset loc =
+  loc.start.offset
+
 let union start end_ =
   create start.start end_.end_
 

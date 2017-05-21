@@ -975,22 +975,22 @@ exp:
 
 match_exp:
   | match_exp EQ match_exp
-  { binexp $1 (locate $2 Ast.Op_eq) $3 }
+  { binexp $1 (create $2 Ast.Op_eq) $3 }
   | send_exp { $1 }
 
 send_exp:
   | send_exp BANG send_exp
-  { binexp $1 (locate $2 Ast.Op_ep) $3 }
+  { binexp $1 (create $2 Ast.Op_ep) $3 }
   | or_cond_exp { $1 }
 
 or_cond_exp:
   | or_cond_exp ORELSE or_cond_exp
-  { binexp $1 (locate $2 Ast.Op_orelse) $3 }
+  { binexp $1 (create $2 Ast.Op_orelse) $3 }
   | and_cond_exp { $1 }
 
 and_cond_exp:
   | and_cond_exp ANDALSO and_cond_exp
-  { binexp $1 (locate $2 Ast.Op_andalso) $3 }
+  { binexp $1 (create $2 Ast.Op_andalso) $3 }
   | compare_exp { $1 }
 
 compare_exp:
@@ -998,56 +998,56 @@ compare_exp:
   | list_conc_exp { $1 }
 
 compare_op:
-  | EQQ { locate $1 Ast.Op_eqq }
-  | NE { locate $1 Ast.Op_ne }
-  | XEQ { locate $1 Ast.Op_xeq }
-  | XNE { locate $1 Ast.Op_xne }
-  | GT { locate $1 Ast.Op_gt }
-  | GE { locate $1 Ast.Op_ge }
-  | LT { locate $1 Ast.Op_lt }
-  | LE { locate $1 Ast.Op_le }
+  | EQQ { create $1 Ast.Op_eqq }
+  | NE { create $1 Ast.Op_ne }
+  | XEQ { create $1 Ast.Op_xeq }
+  | XNE { create $1 Ast.Op_xne }
+  | GT { create $1 Ast.Op_gt }
+  | GE { create $1 Ast.Op_ge }
+  | LT { create $1 Ast.Op_lt }
+  | LE { create $1 Ast.Op_le }
 
 list_conc_exp:
   | shift_exp list_conc_op list_conc_exp { binexp $1 $2 $3 }
   | shift_exp { $1 }
 
 list_conc_op:
-  | PLUS2 { locate $1 Ast.Op_list_add }
-  | MINUS2 { locate $1 Ast.Op_list_diff }
+  | PLUS2 { create $1 Ast.Op_list_add }
+  | MINUS2 { create $1 Ast.Op_list_diff }
 
 shift_exp:
   | shift_exp shift_op mul_exp { binexp $1 $2 $3 }
   | mul_exp { $1 }
 
 shift_op:
-  | PLUS { locate $1 Ast.Op_add }
-  | MINUS { locate $1 Ast.Op_sub }
-  | LOR { locate $1 Ast.Op_lor }
-  | LXOR { locate $1 Ast.Op_lxor }
-  | LSHIFT { locate $1 Ast.Op_lshift }
-  | RSHIFT { locate $1 Ast.Op_rshift }
+  | PLUS { create $1 Ast.Op_add }
+  | MINUS { create $1 Ast.Op_sub }
+  | LOR { create $1 Ast.Op_lor }
+  | LXOR { create $1 Ast.Op_lxor }
+  | LSHIFT { create $1 Ast.Op_lshift }
+  | RSHIFT { create $1 Ast.Op_rshift }
 
 mul_exp:
   | mul_exp mul_op prefix_exp { binexp $1 $2 $3 }
   | prefix_exp { $1 }
 
 mul_op:
-  | MUL { locate $1 Ast.Op_mul }
-  | DIV { locate $1 Ast.Op_div }
-  | QUO { locate $1 Ast.Op_quo }
-  | REM { locate $1 Ast.Op_rem }
-  | AND { locate $1 Ast.Op_and }
-  | LAND { locate $1 Ast.Op_land }
+  | MUL { create $1 Ast.Op_mul }
+  | DIV { create $1 Ast.Op_div }
+  | QUO { create $1 Ast.Op_quo }
+  | REM { create $1 Ast.Op_rem }
+  | AND { create $1 Ast.Op_and }
+  | LAND { create $1 Ast.Op_land }
 
 prefix_exp:
   | prefix_op record_exp { Ast.Unexp ($1, $2) }
   | record_exp { $1 }
 
 prefix_op:
-  | PLUS { locate $1 Ast.Op_pos }
-  | MINUS { locate $1 Ast.Op_neg }
-  | NOT { locate $1 Ast.Op_not }
-  | LNOT { locate $1 Ast.Op_lnot }
+  | PLUS { create $1 Ast.Op_pos }
+  | MINUS { create $1 Ast.Op_neg }
+  | NOT { create $1 Ast.Op_not }
+  | LNOT { create $1 Ast.Op_lnot }
 
 record_exp:
   | record_exp NSIGN LIDENT DOT LIDENT

@@ -6,6 +6,7 @@ module Op = struct
   type desc =
     | Nop
     | Text of string
+    | Comment of string
     | Space of int
     | Newline of int
     | Indent of int
@@ -16,15 +17,22 @@ module Op = struct
     desc : desc;
   }
 
-  let create loc desc =
+  let create pos desc =
+    { pos; desc }
+
+  let of_loc loc desc =
     { pos = Location.offset loc; desc }
 
   let length op =
     match op.desc with
-    | Text s -> Some (String.length s)
+    | Nop
+    | Indent _
+    | Dedent -> None
+
+    | Text s
+    | Comment s -> Some (String.length s)
     | Space len -> Some len
     | Newline len -> Some len
-    | _ -> None
 
 end
 
@@ -69,10 +77,21 @@ module Context = struct
     ctx.ops <- op :: ctx.ops
 
   let add_string ctx loc text =
-    add ctx @@ Op.create loc (Op.Text text)
+    add ctx @@ Op.of_loc loc (Op.Text text)
 
   let add_text ctx text =
-    add ctx @@ Op.create text.loc (Op.Text text.desc)
+    add ctx @@ Op.of_loc text.loc (Op.Text text.desc)
+
+  let add_comment ctx text =
+    let len = String.length text.desc in
+    let buf = Buffer.create (len+1) in
+    let body = String.lstrip text.desc ~drop:(fun c -> c = '%') in
+    let sign = String.make (len - String.length body) '%'  in
+    let body = String.strip body in
+    Buffer.add_string buf sign;
+    Buffer.add_string buf " ";
+    Buffer.add_string buf body;
+    add ctx @@ Op.of_loc text.loc (Op.Comment (Buffer.contents buf))
 
   let cur_indent ctx =
     List.hd_exn ctx.indent
@@ -89,6 +108,16 @@ module Context = struct
     ctx.indent <- List.tl_exn ctx.indent
 
 end
+
+let parse_annots ctx =
+  let open Context in
+
+  List.iter (Annot.all ())
+    ~f:(fun annot ->
+        match annot with
+        | Comment text ->
+          add_comment ctx text
+        | _ -> ())
 
 let rec parse ctx node =
   let open Ast_intf in
@@ -115,6 +144,21 @@ let rec parse ctx node =
   | Nop -> ()
   | _ -> ()
 
+let adjust_comments (ops:Op.t list) =
+  List.fold_left ops
+    ~init:[]
+    ~f:(fun accu op ->
+        match op.desc with
+        | Comment s ->
+          begin match List.hd accu with
+            | None -> accu
+            | Some _pre ->
+              let space = Op.create op.pos (Space 1) in
+              { op with pos = op.pos + 1 } :: space :: accu
+          end
+        | _ -> op :: accu)
+  |> List.rev
+
 let sort ops =
   List.sort ops ~cmp:Op.(fun a b -> Int.compare a.pos b.pos)
 
@@ -131,7 +175,7 @@ let compact_pos (ops:Op.t list) =
   (pos, List.rev ops)
 
 let write len (ops:Op.t list) =
-  let buf = String.init (len+1) ~f:(fun _ -> ' ') in
+  let buf = String.make (len+1) ' ' in
   let replace pos s = 
     ignore @@ List.fold_left (String.to_list s)
       ~init:pos
@@ -141,14 +185,19 @@ let write len (ops:Op.t list) =
   in
   List.iter ops ~f:(fun op ->
       match op.desc with
-      | Text s -> replace op.pos s
+      | Text s
+      | Comment s -> replace op.pos s
       | _ -> ()
     );
   buf
 
 let format file node =
   let ctx = Context.create file in
+  parse_annots ctx;
   parse ctx node;
-  let ops = sort ctx.ops in
-  let len, ops = compact_pos ops in
+  let len, ops =
+    adjust_comments ctx.ops
+    |> sort
+    |> compact_pos
+  in
   write len ops

@@ -6,7 +6,7 @@ type t =
 
 let g_annots : t list ref = ref []
 
-let all_annots () = !g_annots
+let all () = !g_annots
 
 let add annot =
   g_annots := annot :: !g_annots

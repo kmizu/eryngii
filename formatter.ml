@@ -146,6 +146,9 @@ let rec parse ctx node =
   | Nop -> ()
   | _ -> ()
 
+let sort ops =
+  List.sort ops ~cmp:Op.(fun a b -> Int.compare a.pos b.pos)
+
 let adjust_comments (ops:Op.t list) =
   List.fold_left ops
     ~init:[]
@@ -153,10 +156,13 @@ let adjust_comments (ops:Op.t list) =
         match op.desc with
         | Comment s ->
           begin match List.hd accu with
-            | None -> accu
-            | Some _pre ->
-              let space = Op.create op.pos (Space 1) in
-              { op with pos = op.pos + 1 } :: space :: accu
+            | None -> op :: accu
+            | Some (pre:Op.t) ->
+              match pre.desc with
+              | Op.Newline -> op :: accu
+              | _ ->
+                let space = Op.create op.pos (Space 1) in
+                { op with pos = op.pos + 1 } :: space :: accu
           end
         | _ -> op :: accu)
   |> List.rev
@@ -171,9 +177,6 @@ let compact_newlines (ops:Op.t list) =
         | _ -> (0, op :: accu))
   |> snd
   |> List.rev
-
-let sort ops =
-  List.sort ops ~cmp:Op.(fun a b -> Int.compare a.pos b.pos)
 
 let compact_pos (ops:Op.t list) =
   let pos, ops = List.fold_left ops ~init:(0, [])
@@ -211,9 +214,9 @@ let format file node =
   parse_annots ctx;
   parse ctx node;
   let len, ops =
-    adjust_comments ctx.ops
+    sort ctx.ops
+    |> adjust_comments
     |> compact_newlines
-    |> sort
     |> compact_pos
   in
   write len ops

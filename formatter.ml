@@ -8,7 +8,7 @@ module Op = struct
     | Text of string
     | Comment of string
     | Space of int
-    | Newline of int
+    | Newline
     | Indent of int
     | Dedent
 
@@ -32,7 +32,7 @@ module Op = struct
     | Text s
     | Comment s -> Some (String.length s)
     | Space len -> Some len
-    | Newline len -> Some len
+    | Newline -> Some 1
 
 end
 
@@ -93,6 +93,9 @@ module Context = struct
     Buffer.add_string buf body;
     add ctx @@ Op.of_loc text.loc (Op.Comment (Buffer.contents buf))
 
+  let add_newline ctx text =
+    add ctx @@ Op.of_loc text.loc Op.Newline
+
   let cur_indent ctx =
     List.hd_exn ctx.indent
 
@@ -115,9 +118,8 @@ let parse_annots ctx =
   List.iter (Annot.all ())
     ~f:(fun annot ->
         match annot with
-        | Comment text ->
-          add_comment ctx text
-        | _ -> ())
+        | Comment text -> add_comment ctx text
+        | Newline text -> add_newline ctx text)
 
 let rec parse ctx node =
   let open Ast_intf in
@@ -159,6 +161,17 @@ let adjust_comments (ops:Op.t list) =
         | _ -> op :: accu)
   |> List.rev
 
+let compact_newlines (ops:Op.t list) =
+  List.fold_left ops
+    ~init:(0, [])
+    ~f:(fun (count, accu) op ->
+        match op.desc with
+        | Newline when count > 1 -> (count + 1, accu)
+        | Newline -> (count + 1, op :: accu)
+        | _ -> (0, op :: accu))
+  |> snd
+  |> List.rev
+
 let sort ops =
   List.sort ops ~cmp:Op.(fun a b -> Int.compare a.pos b.pos)
 
@@ -187,7 +200,9 @@ let write len (ops:Op.t list) =
       match op.desc with
       | Text s
       | Comment s -> replace op.pos s
-      | _ -> ()
+      | Space n -> replace op.pos (String.make n ' ')
+      | Newline -> String.set buf op.pos '\n'
+      | _ -> failwith "not impl"
     );
   buf
 
@@ -197,6 +212,7 @@ let format file node =
   parse ctx node;
   let len, ops =
     adjust_comments ctx.ops
+    |> compact_newlines
     |> sort
     |> compact_pos
   in

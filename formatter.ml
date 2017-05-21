@@ -102,13 +102,10 @@ let rec parse ctx node =
 
   | Modname_attr attr ->
     add_text ctx attr.modname_attr_tag;
-    (*
-    modname_attr_open : token;
-    modname_attr_name: text;
-    modname_attr_close : token;
-    modname_attr_dot : token;
-     *)
-
+    add_string ctx attr.modname_attr_open "(";
+    add_text ctx attr.modname_attr_name;
+    add_string ctx attr.modname_attr_close ")";
+    add_string ctx attr.modname_attr_dot "."
 
   | Paren paren ->
     add_string ctx paren.enc_open "(";
@@ -118,11 +115,40 @@ let rec parse ctx node =
   | Nop -> ()
   | _ -> ()
 
-let finish _ctx =
-  (* TODO *)
-  ""
+let sort ops =
+  List.sort ops ~cmp:Op.(fun a b -> Int.compare a.pos b.pos)
+
+let compact_pos (ops:Op.t list) =
+  let pos, ops = List.fold_left ops ~init:(0, [])
+      ~f:(fun (pos, accu) op ->
+          let op = { op with pos = pos } in
+          let pos, op = match Op.length op with
+            | None -> (pos, op)
+            | Some len -> (pos + len, op)
+          in
+          (pos, op :: accu))
+  in
+  (pos, List.rev ops)
+
+let write len (ops:Op.t list) =
+  let buf = String.init (len+1) ~f:(fun _ -> ' ') in
+  let replace pos s = 
+    ignore @@ List.fold_left (String.to_list s)
+      ~init:pos
+      ~f:(fun pos c ->
+          String.set buf pos c;
+          pos + 1)
+  in
+  List.iter ops ~f:(fun op ->
+      match op.desc with
+      | Text s -> replace op.pos s
+      | _ -> ()
+    );
+  buf
 
 let format file node =
   let ctx = Context.create file in
   parse ctx node;
-  finish ctx
+  let ops = sort ctx.ops in
+  let len, ops = compact_pos ops in
+  write len ops

@@ -19,13 +19,13 @@ let to_loc lexbuf =
   Location.create (start_pos lexbuf) (end_pos lexbuf)
 
 let to_word lexbuf =
-  Located.locate (to_loc lexbuf) (lexeme lexbuf)
+  Located.create (to_loc lexbuf) (lexeme lexbuf)
 
 let strlit lexbuf read =
   let sp = start_pos lexbuf in
   let contents = read (Buffer.create 17) lexbuf in
   let loc = Location.create sp (end_pos lexbuf) in
-  Located.locate loc contents
+  Located.create loc contents
 
 }
 
@@ -46,7 +46,10 @@ let bit_type = lower ('-' lower)*
 rule read =
   parse
   | white   { read lexbuf }
-  | newline { new_line lexbuf; read lexbuf }
+  | newline {
+      Annot.add_newline (to_word lexbuf);
+      new_line lexbuf;
+      read lexbuf }
   | comment { Annot.add_comment (to_word lexbuf); read lexbuf }
   | char    { CHAR (to_word lexbuf) }
   | int     { INT (to_word lexbuf) }

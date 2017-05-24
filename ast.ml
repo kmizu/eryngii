@@ -34,11 +34,11 @@ let rec start_pos node =
   let open Location in
 
   let of_loc loc =
-    (Option.value_exn loc).start
+    loc.start
   in
 
   let of_text text =
-    of_loc text.loc
+    text.loc.start
   in
 
   let of_fun_clause clause =
@@ -123,9 +123,7 @@ let rec end_pos node =
   let open Located in
   let open Location in
 
-  let of_loc loc =
-    (Option.value_exn loc).end_
-  in
+  let of_loc loc = loc.end_ in
 
   let of_text text =
     of_loc text.loc

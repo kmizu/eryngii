@@ -26,7 +26,6 @@ let parse_file file ~f =
               |> In_channel.input_all
               |> File.create
             in
-            Annot.init @@ Array.length file.lines;
             let node = Parser.prog Lexer.read buf in
             f file node
           end with

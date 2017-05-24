@@ -334,7 +334,7 @@ let write len (ops:Op.t list) =
           failwith "no indent size"
         | _ -> failwith "not impl"
       );
-  buf
+  String.strip buf ^ "\n"
 
 let format file node =
   let ctx = Context.create file in

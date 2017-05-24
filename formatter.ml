@@ -10,7 +10,7 @@ module Op = struct
     | Space of int
     | Newline
     | Indent of int
-    | Indent_spaces of int option ref
+    | Newline_indent of int option ref
     | Dedent
     | Mark_indent
     | Unmark_indent
@@ -26,6 +26,9 @@ module Op = struct
   let of_loc loc desc =
     { pos = Location.offset loc; desc }
 
+  let spaces pos len =
+    create pos (Space len)
+
   let length op =
     match op.desc with
     | Nop
@@ -36,9 +39,18 @@ module Op = struct
     | Comment s -> Some (String.length s)
     | Space len -> Some len
     | Newline -> Some 1
-    | Indent_spaces { contents = Some n } -> Some n
+    | Newline_indent { contents = Some n } -> Some (n + 1)
 
     | _ -> None
+
+  let length_exn op =
+    Option.value_exn (length op)
+
+  let add_pos op len =
+    { op with pos = op.pos + len }
+
+  let add_pos_of op other =
+    add_pos op @@ length_exn other
 
 end
 
@@ -118,8 +130,8 @@ module Context = struct
     f ();
     add ctx @@ Op.create (last_pos_exn ctx) Unmark_indent
 
-  let add_indent_spaces ctx loc =
-    add ctx @@ Op.of_loc loc (Indent_spaces (ref None))
+  let add_newline_indent ctx loc =
+    add ctx @@ Op.of_loc loc (Newline_indent (ref None))
 
   let cur_indent ctx =
     List.hd_exn ctx.indent
@@ -196,8 +208,7 @@ and parse_fun_sigs ctx fsigs =
             if len < 3 then
               add_space ctx sep 1
             else begin
-              add_newline ctx sep;
-              add_indent_spaces ctx sep
+              add_newline_indent ctx sep
             end))
 
 and parse_fun_sig ctx fsig =
@@ -214,18 +225,31 @@ let adjust_comments (ops:Op.t list) =
   List.fold_left ops
     ~init:[]
     ~f:(fun accu op ->
-        match op.desc with
-        | Comment s ->
-          begin match List.hd accu with
-            | None -> op :: accu
-            | Some (pre:Op.t) ->
-              match pre.desc with
-              | Op.Newline -> op :: accu
+        match List.hd accu with
+        | None -> op :: accu
+        | Some (pre:Op.t) ->
+          match op.desc with
+          | Comment s ->
+            begin match pre.desc with
+              | Newline -> op :: accu
+              | Newline_indent _ ->
+                let accu = op :: List.tl_exn accu in
+                let space = Op.spaces op.pos 1 in
+                let op = Op.add_pos op 1  in
+                let pre = Op.add_pos_of pre op in
+                pre :: op :: space :: List.tl_exn accu
               | _ ->
-                let space = Op.create op.pos (Space 1) in
-                { op with pos = op.pos + 1 } :: space :: accu
-          end
-        | _ -> op :: accu)
+                let space = Op.spaces op.pos 1 in
+                Op.add_pos_of op space :: space :: accu
+            end
+
+          | Newline ->
+            begin match pre.desc with
+              | Newline_indent _ -> accu (* cut current newline *)
+              | _ -> op :: accu
+            end
+
+          | _ -> op :: accu)
   |> List.rev
 
 let compact_newlines (ops:Op.t list) =
@@ -275,7 +299,7 @@ let count_indent (ops:Op.t list) =
           let size = op.pos - Option.value_exn start - 1 in
           indents := size :: !indents;
           (None, accu)
-        | Indent_spaces ref ->
+        | Newline_indent ref ->
           ref := Some (indent_size ());
           (None, op :: accu)
         | _ ->
@@ -292,17 +316,21 @@ let write len (ops:Op.t list) =
           String.set buf pos c;
           pos + 1)
   in
+  let replace_spaces pos len =
+    replace pos (String.make len ' ')
+  in
 
   List.iter ops
     ~f:(fun op ->
         match op.desc with
         | Text s
         | Comment s -> replace op.pos s
-        | Newline -> String.set buf op.pos '\n'
-        | Space n -> replace op.pos (String.make n ' ')
-        | Indent_spaces { contents = Some n } ->
-          replace op.pos (String.make n ' ')
-        | Indent_spaces { contents = None } ->
+        | Newline -> replace op.pos "\n"
+        | Space n -> replace_spaces op.pos n
+        | Newline_indent { contents = Some n } ->
+          replace op.pos "\n";
+          replace_spaces (op.pos + 1) n
+        | Newline_indent { contents = None } ->
           failwith "no indent size"
         | _ -> failwith "not impl"
       );

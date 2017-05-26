@@ -8,12 +8,9 @@ module Op = struct
     | Text of string
     | Comment of string
     | Space of int
-    | Newline
-    | Indent of int
-    | Newline_indent of int option ref
+    | Newline of int
+    | Indent of int option ref
     | Dedent
-    | Mark_indent
-    | Unmark_indent
 
   type t = {
     pos : int;
@@ -32,14 +29,13 @@ module Op = struct
   let length op =
     match op.desc with
     | Nop
-    | Indent _
     | Dedent -> None
 
     | Text s
     | Comment s -> Some (String.length s)
-    | Space len -> Some len
-    | Newline -> Some 1
-    | Newline_indent { contents = Some n } -> Some (n + 1)
+    | Space n
+    | Newline n -> Some n
+    | Indent { contents = Some n } -> Some n
 
     | _ -> None
 
@@ -51,6 +47,18 @@ module Op = struct
 
   let add_pos_of op other =
     add_pos op @@ length_exn other
+
+  let to_string op =
+    let open Printf in
+    match op.desc with
+    | Nop -> "nop"
+    | Text s -> sprintf "text(\"%s\")" s
+    | Comment s -> sprintf "comment(\"%s\")" s
+    | Space n -> sprintf "space(%d)" n
+    | Newline n -> sprintf "newline(%d)" n
+    | Indent { contents = None } -> "indent"
+    | Indent { contents = Some n} -> sprintf "indent(%d)" n
+    | Dedent -> "dedent"
 
 end
 
@@ -120,18 +128,13 @@ module Context = struct
     add ctx @@ Op.of_loc text.loc (Op.Comment (Buffer.contents buf))
 
   let add_space ctx loc n =
-    add ctx @@ Op.of_loc loc (Op.Space n)
+    add ctx @@ Op.of_loc loc (Space n)
 
-  let add_newline ctx loc =
-    add ctx @@ Op.of_loc loc Op.Newline
+  let add_newline ctx loc n =
+    add ctx @@ Op.of_loc loc (Newline n)
 
-  let mark_indent ctx ~f =
-    add ctx @@ Op.create (last_pos_exn ctx) Mark_indent;
-    f ();
-    add ctx @@ Op.create (last_pos_exn ctx) Unmark_indent
-
-  let add_newline_indent ctx loc =
-    add ctx @@ Op.of_loc loc (Newline_indent (ref None))
+  let add_indent ctx loc =
+    add ctx @@ Op.of_loc loc (Indent (ref None))
 
   let cur_indent ctx =
     List.hd_exn ctx.indent
@@ -159,7 +162,8 @@ let parse_annots ctx =
     ~f:(fun annot ->
         match annot with
         | Comment text -> add_comment ctx text
-        | Newline text -> add_newline ctx text.loc)
+        (* TODO: count \r\n, \r, \n *)
+        | Newline text -> add_newline ctx text.loc (String.length text.desc))
 
 let rec parse ctx node =
   let open Ast_intf in
@@ -179,10 +183,9 @@ let rec parse ctx node =
     add_string ctx attr.modname_attr_dot "."
 
   | Export_attr attr ->
-    mark_indent ctx ~f:(fun () ->
-        add_text ctx attr.export_attr_tag;
-        add_string ctx attr.export_attr_open "(";
-        add_string ctx attr.export_attr_fun_open "[");
+    add_text ctx attr.export_attr_tag;
+    add_string ctx attr.export_attr_open "(";
+    add_string ctx attr.export_attr_fun_open "[";
     parse_fun_sigs ctx attr.export_attr_funs;
     dedent ctx;
     add_string ctx attr.export_attr_fun_close "]";
@@ -208,7 +211,8 @@ and parse_fun_sigs ctx fsigs =
             if len < 3 then
               add_space ctx sep 1
             else begin
-              add_newline_indent ctx sep
+              add_newline ctx sep 1;
+              add_indent ctx sep;
             end))
 
 and parse_fun_sig ctx fsig =
@@ -221,6 +225,7 @@ and parse_fun_sig ctx fsig =
 let sort ops =
   List.sort ops ~cmp:Op.(fun a b -> Int.compare a.pos b.pos)
 
+    (*
 let adjust_comments (ops:Op.t list) =
   List.fold_left ops
     ~init:[]
@@ -232,7 +237,7 @@ let adjust_comments (ops:Op.t list) =
           | Comment s ->
             begin match pre.desc with
               | Newline -> op :: accu
-              | Newline_indent _ ->
+              | Indent _ ->
                 let accu = op :: List.tl_exn accu in
                 let space = Op.spaces op.pos 1 in
                 let op = Op.add_pos op 1  in
@@ -242,24 +247,21 @@ let adjust_comments (ops:Op.t list) =
                 let space = Op.spaces op.pos 1 in
                 Op.add_pos_of op space :: space :: accu
             end
-
-          | Newline ->
-            begin match pre.desc with
-              | Newline_indent _ -> accu (* cut current newline *)
-              | _ -> op :: accu
-            end
-
           | _ -> op :: accu)
   |> List.rev
+     *)
 
 let compact_newlines (ops:Op.t list) =
   List.fold_left ops
-    ~init:(0, [])
+    ~init:(None, [])
     ~f:(fun (count, accu) op ->
-        match op.desc with
-        | Newline when count > 1 -> (count + 1, accu)
-        | Newline -> (count + 1, op :: accu)
-        | _ -> (0, op :: accu))
+        match (count, op.desc) with
+        | None, Newline _ -> (Some 1, accu)
+        | None, _ -> (None, op :: accu)
+        | Some _, Newline _ -> (Some 2, accu)
+        | Some n, _ ->
+          let nl = Op.create op.pos (Newline n) in
+          (None, nl :: op :: accu))
   |> snd
   |> List.rev
 
@@ -275,37 +277,26 @@ let compact_pos (ops:Op.t list) =
   in
   (pos, List.rev ops)
 
+module Indent = struct
+
+  type t = {
+    ops : Op.t list
+  }
+
+  let length indent =
+    List.fold_left indent
+      ~init:0
+      ~f:(fun accu op ->
+          match Op.length op with
+          | None -> accu
+          | Some n -> accu + n)
+
+end
+
+(*
 let count_indent (ops:Op.t list) =
-  let indents : int list ref = ref [] in
-
-  let indent_size () =
-    List.fold_left !indents ~init:0 ~f:(fun accu size -> accu + size)
-  in
-
-  let _, ops = compact_pos ops in
-  List.fold_left ops
-    ~init:(None, [])
-    ~f:(fun (start, accu) op ->
-        match op.desc with
-        | Indent n ->
-          indents := n :: !indents;
-          (start, accu)
-        | Dedent ->
-          indents := List.tl_exn !indents;
-          (start, accu)
-        | Mark_indent ->
-          (Some op.pos, accu)
-        | Unmark_indent ->
-          let size = op.pos - Option.value_exn start - 1 in
-          indents := size :: !indents;
-          (None, accu)
-        | Newline_indent ref ->
-          ref := Some (indent_size ());
-          (None, op :: accu)
-        | _ ->
-          (start, op :: accu))
-  |> snd
-  |> List.rev
+  ()
+ *)
 
 let write len (ops:Op.t list) =
   let buf = String.make (len*2) ' ' in
@@ -325,13 +316,13 @@ let write len (ops:Op.t list) =
         match op.desc with
         | Text s
         | Comment s -> replace op.pos s
-        | Newline -> replace op.pos "\n"
+        | Newline n -> replace op.pos (String.make n '\n')
         | Space n -> replace_spaces op.pos n
-        | Newline_indent { contents = Some n } ->
-          replace op.pos "\n";
+        | Indent { contents = Some n } ->
           replace_spaces (op.pos + 1) n
-        | Newline_indent { contents = None } ->
+        | Indent { contents = None } ->
           failwith "no indent size"
+        | Dedent -> ()
         | _ -> failwith "not impl"
       );
   String.strip buf ^ "\n"
@@ -343,9 +334,10 @@ let format file node =
   let len, ops =
     List.rev ctx.ops
     |> sort
-    |> adjust_comments
+    (*|> adjust_comments*)
     |> compact_newlines
-    |> count_indent
+    (*|> count_indent*)
     |> compact_pos
   in
+  (*Printf.printf "[%s]\n" (String.concat (List.map ops ~f:Op.to_string) ~sep:", ");*)
   write len ops

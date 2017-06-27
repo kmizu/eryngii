@@ -243,6 +243,37 @@ let rec parse ctx node =
     add_dot ctx attr.export_attr_dot;
     add_end ctx attr.export_attr_dot
 
+  | Spec_attr attr ->
+    add_text ctx attr.spec_attr_tag;
+    add_space ctx attr.spec_attr_tag.loc 1;
+    begin match attr.spec_attr_mname with
+      | None -> ()
+      | Some (mname, colon) ->
+        add_text ctx mname;
+        add_string ctx colon ":"
+    end;
+    add_text ctx attr.spec_attr_fname;
+    add_fix_begin ctx attr.spec_attr_fname.loc;
+
+    Seplist.iter attr.spec_attr_clauses
+      ~f:(fun sep clause ->
+          (* TODO: guard *)
+          add_lp ctx clause.spec_clause_open;
+          Option.iter clause.spec_clause_args ~f:(fun args ->
+              Seplist.iter args ~f:(fun sep arg->
+                  parse_spec_type ctx arg;
+                  Option.iter sep ~f:(fun sep ->
+                      add_string ctx sep ", ")
+                ));
+          add_rp ctx clause.spec_clause_close;
+          add_string ctx clause.spec_clause_arrow " -> ";
+          parse_spec_type ctx clause.spec_clause_return;
+          Option.iter sep ~f:(fun sep ->
+              add_string ctx sep ","));
+
+    add_dot ctx attr.spec_attr_dot;
+    add_end ctx attr.spec_attr_dot
+
   | Paren paren ->
     add_lp ctx paren.enc_open;
     parse ctx paren.enc_desc;
@@ -271,6 +302,41 @@ and parse_fun_sig ctx fsig =
   add_text ctx fsig.fun_sig_name;
   add_string ctx fsig.fun_sig_sep "/";
   add_text ctx fsig.fun_sig_arity
+
+and parse_spec_type ctx spec =
+  let open Ast in
+  let open Context in
+  match spec with
+  | Spec_type.Paren paren ->
+    add_lp ctx paren.enc_open;
+    parse_spec_type ctx paren.enc_desc;
+    add_rp ctx paren.enc_close
+
+  | Named named ->
+    begin match (named.named_module, named.named_colon) with
+      | Some mname, Some colon ->
+        add_text ctx mname;
+        add_string ctx colon ":"
+      | _ -> ()
+    end;
+    add_text ctx named.named_name;
+    add_lp ctx named.named_open;
+    Option.iter named.named_args ~f:(fun args ->
+        Seplist.iter args
+          ~f:(fun sep arg ->
+              parse_spec_type ctx arg;
+              Option.iter sep ~f:(fun sep -> add_string ctx sep ", ")));
+    add_rp ctx named.named_close
+
+  | Atom atom ->
+    add_atom ctx atom
+
+  | List spec ->
+    add_lbk ctx spec.enc_open;
+    parse_spec_type ctx spec.enc_desc;
+    add_rbk ctx spec.enc_close
+
+  | _ -> ()
 
 let sort ops =
   List.sort ops ~cmp:Op.(fun a b -> Int.compare a.pos b.pos)

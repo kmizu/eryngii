@@ -145,6 +145,15 @@ module Context = struct
   let add_text ctx text =
     add_loc ctx text.loc (Op.Text text.desc)
 
+  let add_atom ctx atom =
+    match atom with
+    | `Unenclosed name ->
+      add_text ctx name
+    | `Enclosed name -> 
+      add_string ctx name.loc "'";
+      add_text ctx name;
+      add_string ctx name.loc "'"
+
   let add_comment ctx text =
     let len = String.length text.desc in
     let buf = Buffer.create (len+1) in

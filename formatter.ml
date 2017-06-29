@@ -16,10 +16,8 @@ module Op = struct
     | Lbrace
     | Rbrace
     | Dot
-    | Indent of int
-    | Fix_begin
-    | Var_begin
-    | End
+    | Indent of int option ref
+    | Dedent
 
   type t = {
     pos : int;
@@ -38,14 +36,13 @@ module Op = struct
   let length op =
     match op.desc with
     | Nop
-    | Fix_begin
-    | Var_begin
-    | End -> None
+    | Indent { contents = None }
+    | Dedent -> None
     | Text s
     | Comment s -> Some (String.length s)
     | Space n
     | Newline n
-    | Indent n -> Some n
+    | Indent { contents = Some n } -> Some n
     | Lparen
     | Rparen
     | Lbrack
@@ -81,10 +78,9 @@ module Op = struct
     | Lbrace -> "'{'"
     | Rbrace -> "'}'"
     | Dot -> "'.'"
-    | Indent n -> sprintf "indent(%d)" n
-    | Fix_begin -> "fix_begin"
-    | Var_begin -> "var_begin"
-    | End -> "end"
+    | Indent { contents = None } -> "indent(_)"
+    | Indent { contents = Some n } -> sprintf "indent(%d)" n
+    | Dedent -> "dedent"
 
 end
 
@@ -192,14 +188,11 @@ module Context = struct
   let add_dot ctx loc =
     add_loc ctx loc Dot
 
-  let add_fix_begin ctx loc =
-    add_loc ctx loc Fix_begin
+  let add_indent ctx loc =
+    add_loc ctx loc (Indent (ref None))
 
-  let add_var_begin ctx loc =
-    add_loc ctx loc Var_begin
-
-  let add_end ctx loc =
-    add_loc ctx loc End
+  let add_dedent ctx loc =
+    add_loc ctx loc Dedent
 
 end
 
@@ -225,23 +218,23 @@ let rec parse_node ctx node =
 
   | Modname_attr attr ->
     add_text ctx attr.modname_attr_tag;
-    add_fix_begin ctx attr.modname_attr_tag.loc;
+    add_indent ctx attr.modname_attr_tag.loc;
     add_lp ctx attr.modname_attr_open;
     add_text ctx attr.modname_attr_name;
     add_rp ctx attr.modname_attr_close;
     add_dot ctx attr.modname_attr_dot;
-    add_end ctx attr.modname_attr_dot
+    add_dedent ctx attr.modname_attr_dot
 
   | Export_attr attr ->
     add_text ctx attr.export_attr_tag;
-    add_fix_begin ctx attr.export_attr_tag.loc;
+    add_indent ctx attr.export_attr_tag.loc;
     add_lp ctx attr.export_attr_open;
     add_lbk ctx attr.export_attr_fun_open;
     parse_fun_sigs ctx attr.export_attr_funs;
     add_rbk ctx attr.export_attr_fun_close;
     add_rp ctx attr.export_attr_close;
     add_dot ctx attr.export_attr_dot;
-    add_end ctx attr.export_attr_dot
+    add_dedent ctx attr.export_attr_dot
 
   | Spec_attr attr ->
     add_text ctx attr.spec_attr_tag;
@@ -253,7 +246,7 @@ let rec parse_node ctx node =
         add_string ctx colon ":"
     end;
     add_text ctx attr.spec_attr_fname;
-    add_fix_begin ctx attr.spec_attr_fname.loc;
+    add_indent ctx attr.spec_attr_fname.loc;
 
     Seplist.iter attr.spec_attr_clauses
       ~f:(fun sep clause ->
@@ -272,7 +265,7 @@ let rec parse_node ctx node =
               add_string ctx sep ","));
 
     add_dot ctx attr.spec_attr_dot;
-    add_end ctx attr.spec_attr_dot
+    add_dedent ctx attr.spec_attr_dot
 
   | Paren paren ->
     add_lp ctx paren.enc_open;
@@ -384,17 +377,14 @@ let count_indent (ops:Op.t list) =
       | Rbrack
       | Rbrace ->
         (ops, op :: accu)
-      | End ->
+      | Indent { contents = None }
+      | Dedent ->
         (ops, accu)
-      | Fix_begin ->
+      | Indent { contents = Some indent } ->
         let block = count (ops, accu) col (col + 4 :: depth) in
         count block col depth
-      | Var_begin ->
-        (* TODO *)
-        let block = count (ops, accu) col (col :: depth) in
-        count block col depth
       | Newline _ ->
-        let indent = Op.create op.pos (Indent (List.hd_exn depth)) in
+        let indent = Op.create op.pos (Space (List.hd_exn depth)) in
         count (ops, indent :: op :: accu) 0 depth
       | Comment _ ->
         count (ops, op :: accu) col depth
@@ -433,9 +423,7 @@ let write len (ops:Op.t list) =
         | Dot -> replace op.pos "."
         | Nop 
         | Indent _
-        | Fix_begin
-        | Var_begin
-        | End -> ()
+        | Dedent -> ()
       );
   String.strip buf ^ "\n"
 

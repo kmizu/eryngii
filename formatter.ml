@@ -70,7 +70,7 @@ module Op = struct
     | Text s -> sprintf "text(\"%s\")" s
     | Comment s -> sprintf "comment(\"%s\")" s
     | Space n -> sprintf "space(%d)" n
-    | Newline n -> sprintf "newline(%d)" n
+    | Newline n -> sprintf "nl(%d)" n
     | Lparen -> "'('"
     | Rparen -> "')'"
     | Lbrack -> "'['"
@@ -435,8 +435,8 @@ let format file node =
     List.rev ctx.ops
     |> sort
     |> compact_newlines
-    |> count_indent
+    (*|> count_indent*)
     |> compact_pos
   in
-  (*Printf.printf "[%s]\n" (String.concat (List.map ops ~f:Op.to_string) ~sep:", ");*)
+  Printf.printf "[%s]\n" (String.concat (List.map ops ~f:Op.to_string) ~sep:", ");
   write len ops

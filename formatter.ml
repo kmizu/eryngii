@@ -341,30 +341,6 @@ and parse_spec_type ctx spec =
 let sort ops =
   List.sort ops ~cmp:Op.(fun a b -> Int.compare a.pos b.pos)
 
-let adjust_comments (ops:Op.t list) =
-  List.fold_left ops
-    ~init:[]
-    ~f:(fun accu op ->
-        match List.hd accu with
-        | None -> op :: accu
-        | Some (pre:Op.t) ->
-          match op.desc with
-          | Comment s ->
-            begin match pre.desc with
-              | Newline _ -> op :: accu
-              | Indent _ ->
-                let accu = op :: List.tl_exn accu in
-                let space = Op.spaces op.pos 1 in
-                let op = Op.add_pos op 1  in
-                let pre = Op.add_pos_of pre op in
-                pre :: op :: space :: List.tl_exn accu
-              | _ ->
-                let space = Op.spaces op.pos 1 in
-                Op.add_pos_of op space :: space :: accu
-            end
-          | _ -> op :: accu)
-  |> List.rev
-
 let compact_newlines (ops:Op.t list) =
   (*Printf.printf "compact_newlines: [%s]\n" (String.concat (List.map ops ~f:Op.to_string) ~sep:", ");*)
   List.fold_left ops
@@ -470,7 +446,6 @@ let format file node =
   let len, ops =
     List.rev ctx.ops
     |> sort
-    |> adjust_comments
     |> compact_newlines
     |> count_indent
     |> compact_pos

@@ -213,7 +213,7 @@ let parse_annots ctx =
         (* TODO: count \r\n, \r, \n *)
         | Newline text -> add_newline ctx text.loc (String.length text.desc))
 
-let rec parse ctx node =
+let rec parse_node ctx node =
   let open Ast_intf in
   let open Context in
   let open Located in
@@ -221,7 +221,7 @@ let rec parse ctx node =
 
   match node with
   | Module m ->
-    List.iter m.module_decls ~f:(parse ctx)
+    List.iter m.module_decls ~f:(parse_node ctx)
 
   | Modname_attr attr ->
     add_text ctx attr.modname_attr_tag;
@@ -276,7 +276,7 @@ let rec parse ctx node =
 
   | Paren paren ->
     add_lp ctx paren.enc_open;
-    parse ctx paren.enc_desc;
+    parse_node ctx paren.enc_desc;
     add_rp ctx paren.enc_close
 
   | Nop -> ()
@@ -442,7 +442,7 @@ let write len (ops:Op.t list) =
 let format file node =
   let ctx = Context.create file in
   parse_annots ctx;
-  parse ctx node;
+  parse_node ctx node;
   let len, ops =
     List.rev ctx.ops
     |> sort

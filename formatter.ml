@@ -36,13 +36,12 @@ module Op = struct
   let length op =
     match op.desc with
     | Nop
-    | Indent { contents = None }
+    | Indent _
     | Dedent -> None
     | Text s
     | Comment s -> Some (String.length s)
     | Space n
-    | Newline n
-    | Indent { contents = Some n } -> Some n
+    | Newline n -> Some n
     | Lparen
     | Rparen
     | Lbrack
@@ -218,23 +217,19 @@ let rec parse_node ctx node =
 
   | Modname_attr attr ->
     add_text ctx attr.modname_attr_tag; (* -module *)
-    add_indent ctx attr.modname_attr_tag.loc;
     add_lp ctx attr.modname_attr_open;
     add_text ctx attr.modname_attr_name;
     add_rp ctx attr.modname_attr_close;
-    add_dot ctx attr.modname_attr_dot;
-    add_dedent ctx attr.modname_attr_dot
+    add_dot ctx attr.modname_attr_dot
 
   | Export_attr attr ->
     add_text ctx attr.export_attr_tag; (* -export *)
-    add_indent ctx attr.export_attr_tag.loc;
     add_lp ctx attr.export_attr_open;
     add_lbk ctx attr.export_attr_fun_open;
     parse_fun_sigs ctx attr.export_attr_funs;
     add_rbk ctx attr.export_attr_fun_close;
     add_rp ctx attr.export_attr_close;
-    add_dot ctx attr.export_attr_dot;
-    add_dedent ctx attr.export_attr_dot
+    add_dot ctx attr.export_attr_dot
 
   | Spec_attr attr ->
     add_text ctx attr.spec_attr_tag; (* -spec *)
@@ -277,17 +272,11 @@ let rec parse_node ctx node =
 
 and parse_fun_sigs ctx fsigs =
   let open Context in
-  let len = Seplist.length fsigs in
   Seplist.iter fsigs
     ~f:(fun sep fsig ->
         parse_fun_sig ctx fsig;
         Option.iter sep ~f:(fun sep ->
-            add_string ctx sep ",";
-            if len < 3 then
-              add_space ctx sep 1
-            else begin
-              add_newline ctx sep 1
-            end))
+            add_string ctx sep ", "))
 
 and parse_fun_sig ctx fsig =
   let open Ast in
@@ -363,36 +352,30 @@ let compact_pos (ops:Op.t list) =
 
 let count_indent (ops:Op.t list) =
   let open Op in
-  let rec count (ops, accu) col depth : (Op.t list * Op.t list) =
-    match ops with
-    | [] -> ([], accu)
-    | op :: ops ->
-      match op.desc with
-      | Lparen
-      | Lbrack
-      | Lbrace ->
-        let block = count (ops, op :: accu) (col + 1) (col + 1 :: depth) in
-        count block col depth
-      | Rparen
-      | Rbrack
-      | Rbrace ->
-        (ops, op :: accu)
-      | Indent { contents = None }
-      | Dedent ->
-        (ops, accu)
-      | Indent { contents = Some indent } ->
-        let block = count (ops, accu) col (col + 4 :: depth) in
-        count block col depth
-      | Newline _ ->
-        let indent = Op.create op.pos (Space (List.hd_exn depth)) in
-        count (ops, indent :: op :: accu) 0 depth
-      | Comment _ ->
-        count (ops, op :: accu) col depth
-      | _ ->
-        count (ops, op :: accu) (col + Op.length_zero op) depth
+  let _, _, rev_ops = List.fold_left ops ~init:(0, [0], [])
+      ~f:(fun (col, depth, accu) op ->
+          match op.desc with
+          | Lparen | Lbrack | Lbrace ->
+            (col+1, col+1 :: depth, op :: accu)
+          | Rparen | Rbrack | Rbrace ->
+            (col+1, List.tl_exn depth, op :: accu)
+          | Newline _ ->
+            let indent = Op.create op.pos (Space (List.hd_exn depth)) in
+            (0, depth, indent :: op :: accu)
+          | Indent rf -> (* ref 不要？ *)
+            (* TODO *)
+            let size = List.hd_exn depth + 4 in
+            rf := Some size;
+            (col, size :: depth, op :: accu)
+          | Dedent ->
+            (col, List.tl_exn depth, op :: accu)
+          | Comment _ ->
+            (col, depth, op :: accu)
+          | _ ->
+            let col = Option.value_exn (Op.length op) in
+            (col, depth, op :: accu))
   in
-  let _, accu = count (ops, []) 0 [0] in
-  List.rev accu
+  List.rev rev_ops
 
 let write len (ops:Op.t list) =
   let buf = String.make (len*2) ' ' in
@@ -435,7 +418,7 @@ let format file node =
     List.rev ctx.ops
     |> sort
     |> compact_newlines
-    (*|> count_indent*)
+    |> count_indent
     |> compact_pos
   in
   Printf.printf "[%s]\n" (String.concat (List.map ops ~f:Op.to_string) ~sep:", ");

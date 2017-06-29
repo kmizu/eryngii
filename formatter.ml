@@ -217,7 +217,7 @@ let rec parse_node ctx node =
     List.iter m.module_decls ~f:(parse_node ctx)
 
   | Modname_attr attr ->
-    add_text ctx attr.modname_attr_tag;
+    add_text ctx attr.modname_attr_tag; (* -module *)
     add_indent ctx attr.modname_attr_tag.loc;
     add_lp ctx attr.modname_attr_open;
     add_text ctx attr.modname_attr_name;
@@ -226,7 +226,7 @@ let rec parse_node ctx node =
     add_dedent ctx attr.modname_attr_dot
 
   | Export_attr attr ->
-    add_text ctx attr.export_attr_tag;
+    add_text ctx attr.export_attr_tag; (* -export *)
     add_indent ctx attr.export_attr_tag.loc;
     add_lp ctx attr.export_attr_open;
     add_lbk ctx attr.export_attr_fun_open;
@@ -237,7 +237,7 @@ let rec parse_node ctx node =
     add_dedent ctx attr.export_attr_dot
 
   | Spec_attr attr ->
-    add_text ctx attr.spec_attr_tag;
+    add_text ctx attr.spec_attr_tag; (* -spec *)
     add_space ctx attr.spec_attr_tag.loc 1;
     begin match attr.spec_attr_mname with
       | None -> ()

@@ -177,10 +177,10 @@ module Context = struct
   let rbk ctx loc =
     add_loc ctx loc Rbrack
 
-  let add_lbe ctx loc =
+  let lbe ctx loc =
     add_loc ctx loc Lbrace
 
-  let add_rbe ctx loc =
+  let rbe ctx loc =
     add_loc ctx loc Rbrace
 
   let dot ctx loc =

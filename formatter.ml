@@ -198,7 +198,8 @@ let sort ops =
   List.sort ops ~cmp:Op.(fun a b -> Int.compare a.pos b.pos)
 
 let compact_newlines (ops:Op.t list) =
-  (*Printf.printf "compact_newlines: [%s]\n" (String.concat (List.map ops ~f:Op.to_string) ~sep:", ");*)
+  Conf.debug "compact_newlines: [%s]"
+    (String.concat (List.map ops ~f:Op.to_string) ~sep:", ");
   List.fold_left ops
     ~init:(None, [])
     ~f:(fun (count, accu) op ->
@@ -228,7 +229,7 @@ let count_indent (ops:Op.t list) =
   let open Op in
   let _, _, rev_ops = List.fold_left ops ~init:(0, [0], [])
       ~f:(fun (col, depth, accu) op ->
-          Printf.printf "count_indent: %s\n" (Op.to_string op);
+          Conf.debug "count_indent: %s" (Op.to_string op);
           match op.desc with
           | Lparen | Lbrack | Lbrace ->
             (col+1, col+1 :: depth, op :: accu)
@@ -421,5 +422,5 @@ let format file node =
     |> count_indent
     |> compact_pos
   in
-  Printf.printf "[%s]\n" (String.concat (List.map ops ~f:Op.to_string) ~sep:", ");
+  Conf.debug "[%s]" (String.concat (List.map ops ~f:Op.to_string) ~sep:", ");
   write len ops

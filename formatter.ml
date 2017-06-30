@@ -15,7 +15,7 @@ module Op = struct
     | Rbrack
     | Lbrace
     | Rbrace
-    | Indent of int option ref
+    | Indent
     | Dedent
     | Dot
 
@@ -36,7 +36,7 @@ module Op = struct
   let length op =
     match op.desc with
     | Nop
-    | Indent _
+    | Indent
     | Dedent -> None
     | Text s
     | Comment s -> Some (String.length s)
@@ -77,8 +77,7 @@ module Op = struct
     | Lbrace -> "'{'"
     | Rbrace -> "'}'"
     | Dot -> "'.'"
-    | Indent { contents = None } -> "indent(_)"
-    | Indent { contents = Some n } -> sprintf "indent(%d)" n
+    | Indent -> "indent"
     | Dedent -> "dedent"
 
 end
@@ -188,7 +187,7 @@ module Context = struct
     add_loc ctx loc Dot
 
   let add_indent ctx loc =
-    add_loc ctx loc (Indent (ref None))
+    add_loc ctx loc Indent
 
   let add_dedent ctx loc =
     add_loc ctx loc Dedent
@@ -362,11 +361,9 @@ let count_indent (ops:Op.t list) =
           | Newline _ ->
             let indent = Op.create op.pos (Space (List.hd_exn depth)) in
             (0, depth, indent :: op :: accu)
-          | Indent rf -> (* ref 不要？ *)
-            (* TODO *)
+          | Indent ->
             let size = List.hd_exn depth + 4 in
-            rf := Some size;
-            (col, size :: depth, op :: accu)
+            (col, size :: depth, Op.spaces op.pos size :: accu)
           | Dedent ->
             (col, List.tl_exn depth, op :: accu)
           | Comment _ ->
@@ -405,7 +402,7 @@ let write len (ops:Op.t list) =
         | Rbrace -> replace op.pos "}"
         | Dot -> replace op.pos "."
         | Nop 
-        | Indent _
+        | Indent
         | Dedent -> ()
       );
   String.strip buf ^ "\n"

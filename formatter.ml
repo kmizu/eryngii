@@ -228,19 +228,20 @@ let count_indent (ops:Op.t list) =
   let open Op in
   let _, _, rev_ops = List.fold_left ops ~init:(0, [0], [])
       ~f:(fun (col, depth, accu) op ->
+          Printf.printf "count_indent: %s\n" (Op.to_string op);
           match op.desc with
           | Lparen | Lbrack | Lbrace ->
             (col+1, col+1 :: depth, op :: accu)
-          | Rparen | Rbrack | Rbrace ->
+          | Rparen | Rbrack | Rbrace | Dot ->
             (col+1, List.tl_exn depth, op :: accu)
           | Newline _ ->
             let indent = Op.create op.pos (Space (List.hd_exn depth)) in
             (0, depth, indent :: op :: accu)
           | Indent ->
             let size = List.hd_exn depth + 4 in
-            (col, size :: depth, Op.space op.pos size :: accu)
+            (col, size :: depth, accu)
           | Dedent ->
-            (col, List.tl_exn depth, op :: accu)
+            (col, List.tl_exn depth, accu)
           | Comment _ ->
             (col, depth, op :: accu)
           | _ ->
@@ -304,6 +305,7 @@ let rec parse_node ctx node =
 
   | Modname_attr attr ->
     text ctx attr.modname_attr_tag; (* -module *)
+    indent ctx attr.modname_attr_tag.loc;
     lp ctx attr.modname_attr_open;
     text ctx attr.modname_attr_name;
     rp ctx attr.modname_attr_close;
@@ -311,6 +313,7 @@ let rec parse_node ctx node =
 
   | Export_attr attr ->
     text ctx attr.export_attr_tag; (* -export *)
+    indent ctx attr.export_attr_tag.loc;
     lp ctx attr.export_attr_open;
     lbk ctx attr.export_attr_fun_open;
     parse_fun_sigs ctx attr.export_attr_funs;

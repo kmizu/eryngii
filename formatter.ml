@@ -15,9 +15,9 @@ module Op = struct
     | Rbrack
     | Lbrace
     | Rbrace
-    | Dot
     | Indent of int option ref
     | Dedent
+    | Dot
 
   type t = {
     pos : int;

@@ -133,22 +133,22 @@ module Context = struct
   let add_loc ctx loc desc =
     add ctx @@ Op.of_loc loc desc
 
-  let add_string ctx loc text =
+  let string ctx loc text =
     add_loc ctx loc (Op.Text text)
 
-  let add_text ctx text =
+  let text ctx text =
     add_loc ctx text.loc (Op.Text text.desc)
 
-  let add_atom ctx atom =
+  let atom ctx atom =
     match atom with
     | `Unenclosed name ->
-      add_text ctx name
+      text ctx name
     | `Enclosed name -> 
-      add_string ctx name.loc "'";
-      add_text ctx name;
-      add_string ctx name.loc "'"
+      string ctx name.loc "'";
+      text ctx name;
+      string ctx name.loc "'"
 
-  let add_comment ctx text =
+  let comment ctx text =
     let len = String.length text.desc in
     let buf = Buffer.create (len+1) in
     let body = String.lstrip text.desc ~drop:(fun c -> c = '%') in
@@ -159,22 +159,22 @@ module Context = struct
     Buffer.add_string buf body;
     add_loc ctx text.loc (Op.Comment (Buffer.contents buf))
 
-  let add_space ctx loc n =
+  let space ctx loc n =
     add_loc ctx loc (Space n)
 
-  let add_newline ctx loc n =
+  let newline ctx loc n =
     add_loc ctx loc (Newline n)
 
-  let add_lp ctx loc =
+  let lp ctx loc =
     add_loc ctx loc Lparen
 
-  let add_rp ctx loc =
+  let rp ctx loc =
     add_loc ctx loc Rparen
 
-  let add_lbk ctx loc =
+  let lbk ctx loc =
     add_loc ctx loc Lbrack
 
-  let add_rbk ctx loc =
+  let rbk ctx loc =
     add_loc ctx loc Rbrack
 
   let add_lbe ctx loc =
@@ -183,13 +183,13 @@ module Context = struct
   let add_rbe ctx loc =
     add_loc ctx loc Rbrace
 
-  let add_dot ctx loc =
+  let dot ctx loc =
     add_loc ctx loc Dot
 
-  let add_indent ctx loc =
+  let indent ctx loc =
     add_loc ctx loc Indent
 
-  let add_dedent ctx loc =
+  let dedent ctx loc =
     add_loc ctx loc Dedent
 
 end
@@ -200,9 +200,9 @@ let parse_annots ctx =
   List.iter (Annot.all ())
     ~f:(fun annot ->
         match annot with
-        | Comment text -> add_comment ctx text
+        | Comment text -> comment ctx text
         (* TODO: count \r\n, \r, \n *)
-        | Newline text -> add_newline ctx text.loc (String.length text.desc))
+        | Newline text -> newline ctx text.loc (String.length text.desc))
 
 let rec parse_node ctx node =
   let open Ast_intf in
@@ -215,56 +215,56 @@ let rec parse_node ctx node =
     List.iter m.module_decls ~f:(parse_node ctx)
 
   | Modname_attr attr ->
-    add_text ctx attr.modname_attr_tag; (* -module *)
-    add_lp ctx attr.modname_attr_open;
-    add_text ctx attr.modname_attr_name;
-    add_rp ctx attr.modname_attr_close;
-    add_dot ctx attr.modname_attr_dot
+    text ctx attr.modname_attr_tag; (* -module *)
+    lp ctx attr.modname_attr_open;
+    text ctx attr.modname_attr_name;
+    rp ctx attr.modname_attr_close;
+    dot ctx attr.modname_attr_dot
 
   | Export_attr attr ->
-    add_text ctx attr.export_attr_tag; (* -export *)
-    add_lp ctx attr.export_attr_open;
-    add_lbk ctx attr.export_attr_fun_open;
+    text ctx attr.export_attr_tag; (* -export *)
+    lp ctx attr.export_attr_open;
+    lbk ctx attr.export_attr_fun_open;
     parse_fun_sigs ctx attr.export_attr_funs;
-    add_rbk ctx attr.export_attr_fun_close;
-    add_rp ctx attr.export_attr_close;
-    add_dot ctx attr.export_attr_dot
+    rbk ctx attr.export_attr_fun_close;
+    rp ctx attr.export_attr_close;
+    dot ctx attr.export_attr_dot
 
   | Spec_attr attr ->
-    add_text ctx attr.spec_attr_tag; (* -spec *)
-    add_space ctx attr.spec_attr_tag.loc 1;
+    text ctx attr.spec_attr_tag; (* -spec *)
+    space ctx attr.spec_attr_tag.loc 1;
     begin match attr.spec_attr_mname with
       | None -> ()
       | Some (mname, colon) ->
-        add_text ctx mname;
-        add_string ctx colon ":"
+        text ctx mname;
+        string ctx colon ":"
     end;
-    add_text ctx attr.spec_attr_fname;
-    add_indent ctx attr.spec_attr_fname.loc;
+    text ctx attr.spec_attr_fname;
+    indent ctx attr.spec_attr_fname.loc;
 
     Seplist.iter attr.spec_attr_clauses
       ~f:(fun sep clause ->
           (* TODO: guard *)
-          add_lp ctx clause.spec_clause_open;
+          lp ctx clause.spec_clause_open;
           Option.iter clause.spec_clause_args ~f:(fun args ->
               Seplist.iter args ~f:(fun sep arg->
                   parse_spec_type ctx arg;
                   Option.iter sep ~f:(fun sep ->
-                      add_string ctx sep ", ")
+                      string ctx sep ", ")
                 ));
-          add_rp ctx clause.spec_clause_close;
-          add_string ctx clause.spec_clause_arrow " -> ";
+          rp ctx clause.spec_clause_close;
+          string ctx clause.spec_clause_arrow " -> ";
           parse_spec_type ctx clause.spec_clause_return;
           Option.iter sep ~f:(fun sep ->
-              add_string ctx sep ","));
+              string ctx sep ","));
 
-    add_dot ctx attr.spec_attr_dot;
-    add_dedent ctx attr.spec_attr_dot
+    dot ctx attr.spec_attr_dot;
+    dedent ctx attr.spec_attr_dot
 
   | Paren paren ->
-    add_lp ctx paren.enc_open;
+    lp ctx paren.enc_open;
     parse_node ctx paren.enc_desc;
-    add_rp ctx paren.enc_close
+    rp ctx paren.enc_close
 
   | Nop -> ()
   | _ -> ()
@@ -275,47 +275,47 @@ and parse_fun_sigs ctx fsigs =
     ~f:(fun sep fsig ->
         parse_fun_sig ctx fsig;
         Option.iter sep ~f:(fun sep ->
-            add_string ctx sep ", "))
+            string ctx sep ", "))
 
 and parse_fun_sig ctx fsig =
   let open Ast in
   let open Context in
-  add_text ctx fsig.fun_sig_name;
-  add_string ctx fsig.fun_sig_sep "/";
-  add_text ctx fsig.fun_sig_arity
+  text ctx fsig.fun_sig_name;
+  string ctx fsig.fun_sig_sep "/";
+  text ctx fsig.fun_sig_arity
 
 and parse_spec_type ctx spec =
   let open Ast in
   let open Context in
   match spec with
   | Spec_type.Paren paren ->
-    add_lp ctx paren.enc_open;
+    lp ctx paren.enc_open;
     parse_spec_type ctx paren.enc_desc;
-    add_rp ctx paren.enc_close
+    rp ctx paren.enc_close
 
   | Named named ->
     begin match (named.named_module, named.named_colon) with
       | Some mname, Some colon ->
-        add_text ctx mname;
-        add_string ctx colon ":"
+        text ctx mname;
+        string ctx colon ":"
       | _ -> ()
     end;
-    add_text ctx named.named_name;
-    add_lp ctx named.named_open;
+    text ctx named.named_name;
+    lp ctx named.named_open;
     Option.iter named.named_args ~f:(fun args ->
         Seplist.iter args
           ~f:(fun sep arg ->
               parse_spec_type ctx arg;
-              Option.iter sep ~f:(fun sep -> add_string ctx sep ", ")));
-    add_rp ctx named.named_close
+              Option.iter sep ~f:(fun sep -> string ctx sep ", ")));
+    rp ctx named.named_close
 
-  | Atom atom ->
-    add_atom ctx atom
+  | Atom name ->
+    atom ctx name
 
   | List spec ->
-    add_lbk ctx spec.enc_open;
+    lbk ctx spec.enc_open;
     parse_spec_type ctx spec.enc_desc;
-    add_rbk ctx spec.enc_close
+    rbk ctx spec.enc_close
 
   | _ -> ()
 

@@ -194,6 +194,94 @@ module Context = struct
 
 end
 
+let sort ops =
+  List.sort ops ~cmp:Op.(fun a b -> Int.compare a.pos b.pos)
+
+let compact_newlines (ops:Op.t list) =
+  (*Printf.printf "compact_newlines: [%s]\n" (String.concat (List.map ops ~f:Op.to_string) ~sep:", ");*)
+  List.fold_left ops
+    ~init:(None, [])
+    ~f:(fun (count, accu) op ->
+        match (count, op.desc) with
+        | None, Newline _ -> (Some 1, accu)
+        | None, _ -> (None, op :: accu)
+        | Some _, Newline _ -> (Some 2, accu)
+        | Some n, _ ->
+          let nl = Op.create op.pos (Newline n) in
+          (None, op :: nl :: accu))
+  |> snd
+  |> List.rev
+
+let compact_pos (ops:Op.t list) =
+  let pos, ops = List.fold_left ops ~init:(0, [])
+      ~f:(fun (pos, accu) op ->
+          let op = { op with pos = pos } in
+          let pos, op = match Op.length op with
+            | None -> (pos, op)
+            | Some len -> (pos + len, op)
+          in
+          (pos, op :: accu))
+  in
+  (pos, List.rev ops)
+
+let count_indent (ops:Op.t list) =
+  let open Op in
+  let _, _, rev_ops = List.fold_left ops ~init:(0, [0], [])
+      ~f:(fun (col, depth, accu) op ->
+          match op.desc with
+          | Lparen | Lbrack | Lbrace ->
+            (col+1, col+1 :: depth, op :: accu)
+          | Rparen | Rbrack | Rbrace ->
+            (col+1, List.tl_exn depth, op :: accu)
+          | Newline _ ->
+            let indent = Op.create op.pos (Space (List.hd_exn depth)) in
+            (0, depth, indent :: op :: accu)
+          | Indent ->
+            let size = List.hd_exn depth + 4 in
+            (col, size :: depth, Op.space op.pos size :: accu)
+          | Dedent ->
+            (col, List.tl_exn depth, op :: accu)
+          | Comment _ ->
+            (col, depth, op :: accu)
+          | _ ->
+            let col = Option.value_exn (Op.length op) in
+            (col, depth, op :: accu))
+  in
+  List.rev rev_ops
+
+let write len (ops:Op.t list) =
+  let buf = String.make (len*2) ' ' in
+  let replace pos s = 
+    ignore @@ List.fold_left (String.to_list s)
+      ~init:pos
+      ~f:(fun pos c ->
+          String.set buf pos c;
+          pos + 1)
+  in
+  let replace_spaces pos len =
+    replace pos (String.make len ' ')
+  in
+
+  List.iter ops
+    ~f:(fun op ->
+        match op.desc with
+        | Text s
+        | Comment s -> replace op.pos s
+        | Newline n -> replace op.pos (String.make n '\n')
+        | Space n -> replace_spaces op.pos n
+        | Lparen -> replace op.pos "("
+        | Rparen -> replace op.pos ")"
+        | Lbrack -> replace op.pos "["
+        | Rbrack -> replace op.pos "]"
+        | Lbrace -> replace op.pos "{"
+        | Rbrace -> replace op.pos "}"
+        | Dot -> replace op.pos "."
+        | Nop 
+        | Indent
+        | Dedent -> ()
+      );
+  String.strip buf ^ "\n"
+
 let parse_annots ctx =
   let open Context in
 
@@ -318,94 +406,6 @@ and parse_spec_type ctx spec =
     rbk ctx spec.enc_close
 
   | _ -> ()
-
-let sort ops =
-  List.sort ops ~cmp:Op.(fun a b -> Int.compare a.pos b.pos)
-
-let compact_newlines (ops:Op.t list) =
-  (*Printf.printf "compact_newlines: [%s]\n" (String.concat (List.map ops ~f:Op.to_string) ~sep:", ");*)
-  List.fold_left ops
-    ~init:(None, [])
-    ~f:(fun (count, accu) op ->
-        match (count, op.desc) with
-        | None, Newline _ -> (Some 1, accu)
-        | None, _ -> (None, op :: accu)
-        | Some _, Newline _ -> (Some 2, accu)
-        | Some n, _ ->
-          let nl = Op.create op.pos (Newline n) in
-          (None, op :: nl :: accu))
-  |> snd
-  |> List.rev
-
-let compact_pos (ops:Op.t list) =
-  let pos, ops = List.fold_left ops ~init:(0, [])
-      ~f:(fun (pos, accu) op ->
-          let op = { op with pos = pos } in
-          let pos, op = match Op.length op with
-            | None -> (pos, op)
-            | Some len -> (pos + len, op)
-          in
-          (pos, op :: accu))
-  in
-  (pos, List.rev ops)
-
-let count_indent (ops:Op.t list) =
-  let open Op in
-  let _, _, rev_ops = List.fold_left ops ~init:(0, [0], [])
-      ~f:(fun (col, depth, accu) op ->
-          match op.desc with
-          | Lparen | Lbrack | Lbrace ->
-            (col+1, col+1 :: depth, op :: accu)
-          | Rparen | Rbrack | Rbrace ->
-            (col+1, List.tl_exn depth, op :: accu)
-          | Newline _ ->
-            let indent = Op.create op.pos (Space (List.hd_exn depth)) in
-            (0, depth, indent :: op :: accu)
-          | Indent ->
-            let size = List.hd_exn depth + 4 in
-            (col, size :: depth, Op.space op.pos size :: accu)
-          | Dedent ->
-            (col, List.tl_exn depth, op :: accu)
-          | Comment _ ->
-            (col, depth, op :: accu)
-          | _ ->
-            let col = Option.value_exn (Op.length op) in
-            (col, depth, op :: accu))
-  in
-  List.rev rev_ops
-
-let write len (ops:Op.t list) =
-  let buf = String.make (len*2) ' ' in
-  let replace pos s = 
-    ignore @@ List.fold_left (String.to_list s)
-      ~init:pos
-      ~f:(fun pos c ->
-          String.set buf pos c;
-          pos + 1)
-  in
-  let replace_spaces pos len =
-    replace pos (String.make len ' ')
-  in
-
-  List.iter ops
-    ~f:(fun op ->
-        match op.desc with
-        | Text s
-        | Comment s -> replace op.pos s
-        | Newline n -> replace op.pos (String.make n '\n')
-        | Space n -> replace_spaces op.pos n
-        | Lparen -> replace op.pos "("
-        | Rparen -> replace op.pos ")"
-        | Lbrack -> replace op.pos "["
-        | Rbrack -> replace op.pos "]"
-        | Lbrace -> replace op.pos "{"
-        | Rbrace -> replace op.pos "}"
-        | Dot -> replace op.pos "."
-        | Nop 
-        | Indent
-        | Dedent -> ()
-      );
-  String.strip buf ^ "\n"
 
 let format file node =
   let ctx = Context.create file in

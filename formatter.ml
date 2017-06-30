@@ -30,7 +30,7 @@ module Op = struct
   let of_loc loc desc =
     { pos = Location.offset loc; desc }
 
-  let spaces pos len =
+  let space pos len =
     create pos (Space len)
 
   let length op =
@@ -363,7 +363,7 @@ let count_indent (ops:Op.t list) =
             (0, depth, indent :: op :: accu)
           | Indent ->
             let size = List.hd_exn depth + 4 in
-            (col, size :: depth, Op.spaces op.pos size :: accu)
+            (col, size :: depth, Op.space op.pos size :: accu)
           | Dedent ->
             (col, List.tl_exn depth, op :: accu)
           | Comment _ ->

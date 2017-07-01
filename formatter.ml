@@ -15,11 +15,12 @@ module Op = struct
     | Rbrack
     | Lbrace
     | Rbrace
+    | Leveled_indent
+    | Aligned_indent
+    | Dedent
+    | Semi
     | Dot
-    | Indent of int
-    | Fix_begin
-    | Var_begin
-    | End
+    | Rarrow
 
   type t = {
     pos : int;
@@ -32,27 +33,28 @@ module Op = struct
   let of_loc loc desc =
     { pos = Location.offset loc; desc }
 
-  let spaces pos len =
+  let space pos len =
     create pos (Space len)
 
   let length op =
     match op.desc with
     | Nop
-    | Fix_begin
-    | Var_begin
-    | End -> None
+    | Leveled_indent
+    | Aligned_indent
+    | Dedent -> None
     | Text s
     | Comment s -> Some (String.length s)
     | Space n
-    | Newline n
-    | Indent n -> Some n
+    | Newline n -> Some n
     | Lparen
     | Rparen
     | Lbrack
     | Rbrack
     | Lbrace
     | Rbrace
+    | Semi
     | Dot -> Some 1
+    | Rarrow -> Some 2
 
   let length_exn op =
     Option.value_exn (length op)
@@ -73,18 +75,19 @@ module Op = struct
     | Text s -> sprintf "text(\"%s\")" s
     | Comment s -> sprintf "comment(\"%s\")" s
     | Space n -> sprintf "space(%d)" n
-    | Newline n -> sprintf "newline(%d)" n
+    | Newline n -> sprintf "nl(%d)" n
     | Lparen -> "'('"
     | Rparen -> "')'"
     | Lbrack -> "'['"
     | Rbrack -> "']'"
     | Lbrace -> "'{'"
     | Rbrace -> "'}'"
+    | Semi -> "';'"
     | Dot -> "'.'"
-    | Indent n -> sprintf "indent(%d)" n
-    | Fix_begin -> "fix_begin"
-    | Var_begin -> "var_begin"
-    | End -> "end"
+    | Rarrow -> "'->'"
+    | Leveled_indent -> "l_indent"
+    | Aligned_indent -> "a_indent"
+    | Dedent -> "dedent"
 
 end
 
@@ -139,22 +142,22 @@ module Context = struct
   let add_loc ctx loc desc =
     add ctx @@ Op.of_loc loc desc
 
-  let add_string ctx loc text =
+  let string ctx loc text =
     add_loc ctx loc (Op.Text text)
 
-  let add_text ctx text =
+  let text ctx text =
     add_loc ctx text.loc (Op.Text text.desc)
 
-  let add_atom ctx atom =
+  let atom ctx atom =
     match atom with
     | `Unenclosed name ->
-      add_text ctx name
+      text ctx name
     | `Enclosed name -> 
-      add_string ctx name.loc "'";
-      add_text ctx name;
-      add_string ctx name.loc "'"
+      string ctx name.loc "'";
+      text ctx name;
+      string ctx name.loc "'"
 
-  let add_comment ctx text =
+  let comment ctx text =
     let len = String.length text.desc in
     let buf = Buffer.create (len+1) in
     let body = String.lstrip text.desc ~drop:(fun c -> c = '%') in
@@ -165,208 +168,56 @@ module Context = struct
     Buffer.add_string buf body;
     add_loc ctx text.loc (Op.Comment (Buffer.contents buf))
 
-  let add_space ctx loc n =
+  let space ctx loc n =
     add_loc ctx loc (Space n)
 
-  let add_newline ctx loc n =
+  let newline ctx loc n =
     add_loc ctx loc (Newline n)
 
-  let add_lp ctx loc =
+  let lp ctx loc =
     add_loc ctx loc Lparen
 
-  let add_rp ctx loc =
+  let rp ctx loc =
     add_loc ctx loc Rparen
 
-  let add_lbk ctx loc =
+  let lbk ctx loc =
     add_loc ctx loc Lbrack
 
-  let add_rbk ctx loc =
+  let rbk ctx loc =
     add_loc ctx loc Rbrack
 
-  let add_lbe ctx loc =
+  let lbe ctx loc =
     add_loc ctx loc Lbrace
 
-  let add_rbe ctx loc =
+  let rbe ctx loc =
     add_loc ctx loc Rbrace
 
-  let add_dot ctx loc =
+  let semi ctx loc =
+    add_loc ctx loc Semi
+
+  let dot ctx loc =
     add_loc ctx loc Dot
 
-  let add_fix_begin ctx loc =
-    add_loc ctx loc Fix_begin
+  let rarrow ctx loc =
+    add_loc ctx loc Rarrow
 
-  let add_var_begin ctx loc =
-    add_loc ctx loc Var_begin
+  let indent ctx loc =
+    add_loc ctx loc Leveled_indent
 
-  let add_end ctx loc =
-    add_loc ctx loc End
+  let a_indent ctx loc =
+    add_loc ctx loc Aligned_indent
+
+  let dedent ctx loc =
+    add_loc ctx loc Dedent
 
 end
-
-let parse_annots ctx =
-  let open Context in
-
-  List.iter (Annot.all ())
-    ~f:(fun annot ->
-        match annot with
-        | Comment text -> add_comment ctx text
-        (* TODO: count \r\n, \r, \n *)
-        | Newline text -> add_newline ctx text.loc (String.length text.desc))
-
-let rec parse ctx node =
-  let open Ast_intf in
-  let open Context in
-  let open Located in
-  let open Location in
-
-  match node with
-  | Module m ->
-    List.iter m.module_decls ~f:(parse ctx)
-
-  | Modname_attr attr ->
-    add_text ctx attr.modname_attr_tag;
-    add_fix_begin ctx attr.modname_attr_tag.loc;
-    add_lp ctx attr.modname_attr_open;
-    add_text ctx attr.modname_attr_name;
-    add_rp ctx attr.modname_attr_close;
-    add_dot ctx attr.modname_attr_dot;
-    add_end ctx attr.modname_attr_dot
-
-  | Export_attr attr ->
-    add_text ctx attr.export_attr_tag;
-    add_fix_begin ctx attr.export_attr_tag.loc;
-    add_lp ctx attr.export_attr_open;
-    add_lbk ctx attr.export_attr_fun_open;
-    parse_fun_sigs ctx attr.export_attr_funs;
-    add_rbk ctx attr.export_attr_fun_close;
-    add_rp ctx attr.export_attr_close;
-    add_dot ctx attr.export_attr_dot;
-    add_end ctx attr.export_attr_dot
-
-  | Spec_attr attr ->
-    add_text ctx attr.spec_attr_tag;
-    add_space ctx attr.spec_attr_tag.loc 1;
-    begin match attr.spec_attr_mname with
-      | None -> ()
-      | Some (mname, colon) ->
-        add_text ctx mname;
-        add_string ctx colon ":"
-    end;
-    add_text ctx attr.spec_attr_fname;
-    add_fix_begin ctx attr.spec_attr_fname.loc;
-
-    Seplist.iter attr.spec_attr_clauses
-      ~f:(fun sep clause ->
-          (* TODO: guard *)
-          add_lp ctx clause.spec_clause_open;
-          Option.iter clause.spec_clause_args ~f:(fun args ->
-              Seplist.iter args ~f:(fun sep arg->
-                  parse_spec_type ctx arg;
-                  Option.iter sep ~f:(fun sep ->
-                      add_string ctx sep ", ")
-                ));
-          add_rp ctx clause.spec_clause_close;
-          add_string ctx clause.spec_clause_arrow " -> ";
-          parse_spec_type ctx clause.spec_clause_return;
-          Option.iter sep ~f:(fun sep ->
-              add_string ctx sep ","));
-
-    add_dot ctx attr.spec_attr_dot;
-    add_end ctx attr.spec_attr_dot
-
-  | Paren paren ->
-    add_lp ctx paren.enc_open;
-    parse ctx paren.enc_desc;
-    add_rp ctx paren.enc_close
-
-  | Nop -> ()
-  | _ -> ()
-
-and parse_fun_sigs ctx fsigs =
-  let open Context in
-  let len = Seplist.length fsigs in
-  Seplist.iter fsigs
-    ~f:(fun sep fsig ->
-        parse_fun_sig ctx fsig;
-        Option.iter sep ~f:(fun sep ->
-            add_string ctx sep ",";
-            if len < 3 then
-              add_space ctx sep 1
-            else begin
-              add_newline ctx sep 1
-            end))
-
-and parse_fun_sig ctx fsig =
-  let open Ast in
-  let open Context in
-  add_text ctx fsig.fun_sig_name;
-  add_string ctx fsig.fun_sig_sep "/";
-  add_text ctx fsig.fun_sig_arity
-
-and parse_spec_type ctx spec =
-  let open Ast in
-  let open Context in
-  match spec with
-  | Spec_type.Paren paren ->
-    add_lp ctx paren.enc_open;
-    parse_spec_type ctx paren.enc_desc;
-    add_rp ctx paren.enc_close
-
-  | Named named ->
-    begin match (named.named_module, named.named_colon) with
-      | Some mname, Some colon ->
-        add_text ctx mname;
-        add_string ctx colon ":"
-      | _ -> ()
-    end;
-    add_text ctx named.named_name;
-    add_lp ctx named.named_open;
-    Option.iter named.named_args ~f:(fun args ->
-        Seplist.iter args
-          ~f:(fun sep arg ->
-              parse_spec_type ctx arg;
-              Option.iter sep ~f:(fun sep -> add_string ctx sep ", ")));
-    add_rp ctx named.named_close
-
-  | Atom atom ->
-    add_atom ctx atom
-
-  | List spec ->
-    add_lbk ctx spec.enc_open;
-    parse_spec_type ctx spec.enc_desc;
-    add_rbk ctx spec.enc_close
-
-  | _ -> ()
 
 let sort ops =
   List.sort ops ~cmp:Op.(fun a b -> Int.compare a.pos b.pos)
 
-let adjust_comments (ops:Op.t list) =
-  List.fold_left ops
-    ~init:[]
-    ~f:(fun accu op ->
-        match List.hd accu with
-        | None -> op :: accu
-        | Some (pre:Op.t) ->
-          match op.desc with
-          | Comment s ->
-            begin match pre.desc with
-              | Newline _ -> op :: accu
-              | Indent _ ->
-                let accu = op :: List.tl_exn accu in
-                let space = Op.spaces op.pos 1 in
-                let op = Op.add_pos op 1  in
-                let pre = Op.add_pos_of pre op in
-                pre :: op :: space :: List.tl_exn accu
-              | _ ->
-                let space = Op.spaces op.pos 1 in
-                Op.add_pos_of op space :: space :: accu
-            end
-          | _ -> op :: accu)
-  |> List.rev
-
 let compact_newlines (ops:Op.t list) =
-  (*Printf.printf "compact_newlines: [%s]\n" (String.concat (List.map ops ~f:Op.to_string) ~sep:", ");*)
+  Conf.debug "compact_newlines: [%s]"
+    (String.concat (List.map ops ~f:Op.to_string) ~sep:", ");
   List.fold_left ops
     ~init:(None, [])
     ~f:(fun (count, accu) op ->
@@ -394,39 +245,35 @@ let compact_pos (ops:Op.t list) =
 
 let count_indent (ops:Op.t list) =
   let open Op in
-  let rec count (ops, accu) col depth : (Op.t list * Op.t list) =
-    match ops with
-    | [] -> ([], accu)
-    | op :: ops ->
-      match op.desc with
-      | Lparen
-      | Lbrack
-      | Lbrace ->
-        let block = count (ops, op :: accu) (col + 1) (col + 1 :: depth) in
-        count block col depth
-      | Rparen
-      | Rbrack
-      | Rbrace ->
-        (ops, op :: accu)
-      | End ->
-        (ops, accu)
-      | Fix_begin ->
-        let block = count (ops, accu) col (col + 4 :: depth) in
-        count block col depth
-      | Var_begin ->
-        (* TODO *)
-        let block = count (ops, accu) col (col :: depth) in
-        count block col depth
-      | Newline _ ->
-        let indent = Op.create op.pos (Indent (List.hd_exn depth)) in
-        count (ops, indent :: op :: accu) 0 depth
-      | Comment _ ->
-        count (ops, op :: accu) col depth
-      | _ ->
-        count (ops, op :: accu) (col + Op.length_zero op) depth
+  let _, _, rev_ops = List.fold_left ops ~init:(0, [0], [])
+      ~f:(fun (col, depth, accu) op ->
+          Conf.debug "count_indent: col %d: depth %d: %s"
+            col (List.length depth) (Op.to_string op);
+          match op.desc with
+          | Lparen | Lbrack | Lbrace ->
+            (col+1, col+1 :: depth, op :: accu)
+          | Rparen | Rbrack | Rbrace | Semi | Dot ->
+            (col+1, List.tl_exn depth, op :: accu)
+          | Newline _ ->
+            let indent = Op.create op.pos (Space (List.hd_exn depth)) in
+            (0, depth, indent :: op :: accu)
+          | Rarrow ->
+            let size = List.hd_exn depth + 4 in
+            (col+2, size :: depth, op :: accu)
+          | Leveled_indent ->
+            let size = List.hd_exn depth + 4 in
+            (col, size :: depth, accu)
+          | Aligned_indent ->
+            (col, col :: depth, accu)
+          | Dedent ->
+            (col, List.tl_exn depth, accu)
+          | Comment _ ->
+            (col, depth, op :: accu)
+          | _ ->
+            let col = col + Option.value_exn (Op.length op) in
+            (col, depth, op :: accu))
   in
-  let _, accu = count (ops, []) 0 [0] in
-  List.rev accu
+  List.rev rev_ops
 
 let write len (ops:Op.t list) =
   let buf = String.make (len*2) ' ' in
@@ -454,26 +301,266 @@ let write len (ops:Op.t list) =
         | Rbrack -> replace op.pos "]"
         | Lbrace -> replace op.pos "{"
         | Rbrace -> replace op.pos "}"
+        | Semi -> replace op.pos ";"
         | Dot -> replace op.pos "."
+        | Rarrow -> replace op.pos "->"
         | Nop 
-        | Indent _
-        | Fix_begin
-        | Var_begin
-        | End -> ()
+        | Leveled_indent
+        | Aligned_indent
+        | Dedent -> ()
       );
   String.strip buf ^ "\n"
+
+let parse_annots ctx =
+  let open Context in
+
+  List.iter (Annot.all ())
+    ~f:(fun annot ->
+        match annot with
+        | Comment text -> comment ctx text
+        (* TODO: count \r\n, \r, \n *)
+        | Newline text -> newline ctx text.loc (String.length text.desc))
+
+let rec parse_node ctx node =
+  let open Ast_intf in
+  let open Context in
+  let open Located in
+  let open Location in
+
+  match node with
+  | Module m ->
+    List.iter m.module_decls ~f:(parse_node ctx)
+
+  | Modname_attr attr ->
+    text ctx attr.modname_attr_tag; (* -module *)
+    indent ctx attr.modname_attr_tag.loc;
+    lp ctx attr.modname_attr_open;
+    text ctx attr.modname_attr_name;
+    rp ctx attr.modname_attr_close;
+    dot ctx attr.modname_attr_dot
+
+  | Export_attr attr ->
+    text ctx attr.export_attr_tag; (* -export *)
+    indent ctx attr.export_attr_tag.loc;
+    lp ctx attr.export_attr_open;
+    lbk ctx attr.export_attr_fun_open;
+    parse_fun_sigs ctx attr.export_attr_funs;
+    rbk ctx attr.export_attr_fun_close;
+    rp ctx attr.export_attr_close;
+    dot ctx attr.export_attr_dot
+
+  | Spec_attr attr ->
+    text ctx attr.spec_attr_tag; (* -spec *)
+    indent ctx attr.spec_attr_tag.loc;
+    space ctx attr.spec_attr_tag.loc 1;
+    begin match attr.spec_attr_mname with
+      | None -> ()
+      | Some (mname, colon) ->
+        text ctx mname;
+        string ctx colon ":"
+    end;
+    text ctx attr.spec_attr_fname;
+    dedent ctx attr.spec_attr_fname.loc;
+    a_indent ctx attr.spec_attr_fname.loc;
+
+    Seplist.iter attr.spec_attr_clauses
+      ~f:(fun sep clause ->
+          (* TODO: guard *)
+          lp ctx clause.spec_clause_open;
+          Option.iter clause.spec_clause_args ~f:(fun args ->
+              Seplist.iter args ~f:(fun sep arg->
+                  parse_spec_type ctx arg;
+                  Option.iter sep ~f:(fun sep ->
+                      string ctx sep ", ")
+                ));
+          rp ctx clause.spec_clause_close;
+          space ctx clause.spec_clause_close 1;
+          rarrow ctx clause.spec_clause_arrow;
+          space ctx clause.spec_clause_arrow 1;
+          parse_spec_type ctx clause.spec_clause_return;
+          Option.iter sep ~f:(semi ctx));
+
+    dot ctx attr.spec_attr_dot;
+    dedent ctx attr.spec_attr_dot
+
+  | Fun_decl decl ->
+    parse_fun_body ctx decl.fun_decl_body;
+    dot ctx decl.fun_decl_dot
+
+  | Call call ->
+    lp ctx call.call_open;
+    begin match call.call_fname.fun_name_mname,
+                call.call_fname.fun_name_colon with
+    | Some name, Some colon ->
+      parse_node ctx name;
+      string ctx colon ":"
+    | _ -> ()
+    end;
+    parse_node ctx call.call_fname.fun_name_fname;
+    parse_node_list ctx call.call_args;
+    rp ctx call.call_close
+
+  | Binexp e ->
+    parse_node ctx e.binexp_left;
+    space ctx e.binexp_op.loc 1;
+    parse_op ctx e.binexp_op;
+    space ctx e.binexp_op.loc 1;
+    parse_node ctx e.binexp_right
+
+  | Paren paren ->
+    lp ctx paren.enc_open;
+    parse_node ctx paren.enc_desc;
+    rp ctx paren.enc_close
+
+  | Var name ->
+    text ctx name
+
+  | Atom name ->
+    atom ctx name
+
+  | Nop -> ()
+  | _ -> ()
+
+and parse_fun_sigs ctx fsigs =
+  let open Context in
+  Seplist.iter fsigs
+    ~f:(fun sep fsig ->
+        parse_fun_sig ctx fsig;
+        Option.iter sep ~f:(fun sep ->
+            string ctx sep ", "))
+
+and parse_fun_sig ctx fsig =
+  let open Ast in
+  let open Context in
+  text ctx fsig.fun_sig_name;
+  string ctx fsig.fun_sig_sep "/";
+  text ctx fsig.fun_sig_arity
+
+and parse_spec_type ctx spec =
+  let open Ast in
+  let open Context in
+  match spec with
+  | Spec_type.Paren paren ->
+    lp ctx paren.enc_open;
+    parse_spec_type ctx paren.enc_desc;
+    rp ctx paren.enc_close
+
+  | Named named ->
+    begin match (named.named_module, named.named_colon) with
+      | Some mname, Some colon ->
+        text ctx mname;
+        string ctx colon ":"
+      | _ -> ()
+    end;
+    text ctx named.named_name;
+    lp ctx named.named_open;
+    Option.iter named.named_args ~f:(fun args ->
+        Seplist.iter args
+          ~f:(fun sep arg ->
+              parse_spec_type ctx arg;
+              Option.iter sep ~f:(fun sep -> string ctx sep ", ")));
+    rp ctx named.named_close
+
+  | Atom name ->
+    atom ctx name
+
+  | List spec ->
+    lbk ctx spec.enc_open;
+    parse_spec_type ctx spec.enc_desc;
+    rbk ctx spec.enc_close
+
+  | Union spec ->
+    parse_spec_type ctx spec.union_left;
+    string ctx spec.union_op " | ";
+    parse_spec_type ctx spec.union_right
+
+  | _ -> ()
+
+and parse_fun_body ctx body =
+  let open Context in
+  Seplist.iter body
+    ~f:(fun sep clause ->
+        parse_fun_clause ctx clause;
+        Option.iter sep ~f:(fun sep ->
+            semi ctx sep))
+
+and parse_fun_clause ctx clause =
+  let open Context in
+  Option.iter clause.fun_clause_name ~f:(text ctx);
+  lp ctx clause.fun_clause_open;
+  parse_node_list ctx clause.fun_clause_ptns;
+  rp ctx clause.fun_clause_close;
+  space ctx clause.fun_clause_close 1;
+  rarrow ctx clause.fun_clause_arrow;
+  space ctx clause.fun_clause_arrow 1;
+  begin match clause.fun_clause_when, clause.fun_clause_guard with
+    | Some when_, Some guard ->
+      string ctx when_ "when";
+      space ctx when_ 1
+    (* TODO: guard *)
+    | _ -> ()
+  end;
+  parse_node_list ctx clause.fun_clause_body;
+  ()
+
+and parse_node_list ctx es =
+  let open Context in
+  Seplist.iter es
+    ~f:(fun sep e ->
+        parse_node ctx e;
+        Option.iter sep ~f:(fun sep ->
+            string ctx sep ","))
+
+and parse_op ctx op =
+  let open Context in
+  let s = match op.desc with
+    | Op_pos       -> "+"
+    | Op_neg       -> "-"
+    | Op_not       -> "not"
+    | Op_lnot      -> "bnot"
+    | Op_eq        -> "="
+    | Op_ep        -> "!"
+    | Op_eqq       -> "=="
+    | Op_ne        -> "/="
+    | Op_le        -> "=<"
+    | Op_lt        -> "<"
+    | Op_ge        -> ">="
+    | Op_gt        -> ">"
+    | Op_xeq       -> "=:="
+    | Op_xne       -> "=/="
+    | Op_list_add  -> "++"
+    | Op_list_diff -> "--"
+    | Op_add       -> "+"
+    | Op_sub       -> "-"
+    | Op_mul       -> "*"
+    | Op_div       -> "/"
+    | Op_quo       -> "div"
+    | Op_rem       -> "rem"
+    | Op_and       -> "and"
+    | Op_andalso   -> "andalso"
+    | Op_or        -> "or"
+    | Op_orelse    -> "orelse"
+    | Op_xor       -> "xor"
+    | Op_sand      -> "andalso"
+    | Op_sor       -> "orelse"
+    | Op_land      -> "band"
+    | Op_lor       -> "bor"
+    | Op_lxor      -> "bxor"
+    | Op_lshift    -> "bsl"
+    | Op_rshift    -> "bsr"
+  in
+  string ctx op.loc s
 
 let format file node =
   let ctx = Context.create file in
   parse_annots ctx;
-  parse ctx node;
+  parse_node ctx node;
   let len, ops =
     List.rev ctx.ops
     |> sort
-    |> adjust_comments
     |> compact_newlines
     |> count_indent
     |> compact_pos
   in
-  (*Printf.printf "[%s]\n" (String.concat (List.map ops ~f:Op.to_string) ~sep:", ");*)
+  Conf.debug "[%s]" (String.concat (List.map ops ~f:Op.to_string) ~sep:", ");
   write len ops

@@ -51,6 +51,8 @@ let main =
       +> anon (maybe ("filename" %: string))
     )
     (fun debug verbose syntax file () ->
+       Conf.debug_mode := debug;
+       Conf.verbose_mode := verbose;
        parse_file file
          ~f:(fun file node ->
              if not syntax then begin

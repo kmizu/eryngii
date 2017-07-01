@@ -387,10 +387,36 @@ let rec parse_node ctx node =
     parse_fun_body ctx decl.fun_decl_body;
     dot ctx decl.fun_decl_dot
 
+  | Call call ->
+    lp ctx call.call_open;
+    begin match call.call_fname.fun_name_mname,
+                call.call_fname.fun_name_colon with
+    | Some name, Some colon ->
+      parse_node ctx name;
+      string ctx colon ":"
+    | _ -> ()
+    end;
+    parse_node ctx call.call_fname.fun_name_fname;
+    parse_node_list ctx call.call_args;
+    rp ctx call.call_close
+
+  | Binexp e ->
+    parse_node ctx e.binexp_left;
+    space ctx e.binexp_op.loc 1;
+    parse_op ctx e.binexp_op;
+    space ctx e.binexp_op.loc 1;
+    parse_node ctx e.binexp_right
+
   | Paren paren ->
     lp ctx paren.enc_open;
     parse_node ctx paren.enc_desc;
     rp ctx paren.enc_close
+
+  | Var name ->
+    text ctx name
+
+  | Atom name ->
+    atom ctx name
 
   | Nop -> ()
   | _ -> ()
@@ -462,7 +488,7 @@ and parse_fun_clause ctx clause =
   let open Context in
   Option.iter clause.fun_clause_name ~f:(text ctx);
   lp ctx clause.fun_clause_open;
-  parse_exp_list ctx clause.fun_clause_ptns;
+  parse_node_list ctx clause.fun_clause_ptns;
   rp ctx clause.fun_clause_close;
   space ctx clause.fun_clause_close 1;
   rarrow ctx clause.fun_clause_arrow;
@@ -474,29 +500,16 @@ and parse_fun_clause ctx clause =
     (* TODO: guard *)
     | _ -> ()
   end;
-  parse_exp_list ctx clause.fun_clause_body;
+  parse_node_list ctx clause.fun_clause_body;
   ()
 
-and parse_exp_list ctx es =
+and parse_node_list ctx es =
   let open Context in
   Seplist.iter es
     ~f:(fun sep e ->
-        parse_exp ctx e;
+        parse_node ctx e;
         Option.iter sep ~f:(fun sep ->
             string ctx sep ","))
-
-and parse_exp ctx e =
-  let open Context in
-  match e with
-  | Binexp e ->
-    parse_exp ctx e.binexp_left;
-    space ctx e.binexp_op.loc 1;
-    parse_op ctx e.binexp_op;
-    space ctx e.binexp_op.loc 1;
-    parse_exp ctx e.binexp_right
-
-  | Var name -> text ctx name
-  | _ -> ()
 
 and parse_op ctx op =
   let open Context in

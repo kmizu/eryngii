@@ -15,7 +15,8 @@ module Op = struct
     | Rbrack
     | Lbrace
     | Rbrace
-    | Indent
+    | Leveled_indent
+    | Aligned_indent
     | Dedent
     | Semi
     | Dot
@@ -38,7 +39,8 @@ module Op = struct
   let length op =
     match op.desc with
     | Nop
-    | Indent
+    | Leveled_indent
+    | Aligned_indent
     | Dedent -> None
     | Text s
     | Comment s -> Some (String.length s)
@@ -83,7 +85,8 @@ module Op = struct
     | Semi -> "';'"
     | Dot -> "'.'"
     | Rarrow -> "'->'"
-    | Indent -> "indent"
+    | Leveled_indent -> "l_indent"
+    | Aligned_indent -> "a_indent"
     | Dedent -> "dedent"
 
 end
@@ -199,7 +202,10 @@ module Context = struct
     add_loc ctx loc Rarrow
 
   let indent ctx loc =
-    add_loc ctx loc Indent
+    add_loc ctx loc Leveled_indent
+
+  let a_indent ctx loc =
+    add_loc ctx loc Aligned_indent
 
   let dedent ctx loc =
     add_loc ctx loc Dedent
@@ -241,7 +247,7 @@ let count_indent (ops:Op.t list) =
   let open Op in
   let _, _, rev_ops = List.fold_left ops ~init:(0, [0], [])
       ~f:(fun (col, depth, accu) op ->
-          Conf.debug "count_indent: %s" (Op.to_string op);
+          Conf.debug "count_indent %d: %s" col (Op.to_string op);
           match op.desc with
           | Lparen | Lbrack | Lbrace ->
             (col+1, col+1 :: depth, op :: accu)
@@ -253,15 +259,17 @@ let count_indent (ops:Op.t list) =
           | Rarrow ->
             let size = List.hd_exn depth + 4 in
             (col+2, size :: depth, op :: accu)
-          | Indent ->
+          | Leveled_indent ->
             let size = List.hd_exn depth + 4 in
             (col, size :: depth, accu)
+          | Aligned_indent ->
+            (col, col :: depth, accu)
           | Dedent ->
             (col, List.tl_exn depth, accu)
           | Comment _ ->
             (col, depth, op :: accu)
           | _ ->
-            let col = Option.value_exn (Op.length op) in
+            let col = col + Option.value_exn (Op.length op) in
             (col, depth, op :: accu))
   in
   List.rev rev_ops
@@ -296,7 +304,8 @@ let write len (ops:Op.t list) =
         | Dot -> replace op.pos "."
         | Rarrow -> replace op.pos "->"
         | Nop 
-        | Indent
+        | Leveled_indent
+        | Aligned_indent
         | Dedent -> ()
       );
   String.strip buf ^ "\n"
@@ -351,6 +360,7 @@ let rec parse_node ctx node =
     end;
     text ctx attr.spec_attr_fname;
     dedent ctx attr.spec_attr_fname.loc;
+    a_indent ctx attr.spec_attr_fname.loc;
 
     Seplist.iter attr.spec_attr_clauses
       ~f:(fun sep clause ->
@@ -369,7 +379,8 @@ let rec parse_node ctx node =
           parse_spec_type ctx clause.spec_clause_return;
           Option.iter sep ~f:(semi ctx));
 
-    dot ctx attr.spec_attr_dot
+    dot ctx attr.spec_attr_dot;
+    dedent ctx attr.spec_attr_dot
 
   | Paren paren ->
     lp ctx paren.enc_open;

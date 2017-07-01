@@ -247,7 +247,8 @@ let count_indent (ops:Op.t list) =
   let open Op in
   let _, _, rev_ops = List.fold_left ops ~init:(0, [0], [])
       ~f:(fun (col, depth, accu) op ->
-          Conf.debug "count_indent %d: %s" col (Op.to_string op);
+          Conf.debug "count_indent: col %d: depth %d: %s"
+            col (List.length depth) (Op.to_string op);
           match op.desc with
           | Lparen | Lbrack | Lbrace ->
             (col+1, col+1 :: depth, op :: accu)
@@ -382,6 +383,10 @@ let rec parse_node ctx node =
     dot ctx attr.spec_attr_dot;
     dedent ctx attr.spec_attr_dot
 
+  | Fun_decl decl ->
+    parse_fun_body ctx decl.fun_decl_body;
+    dot ctx decl.fun_decl_dot
+
   | Paren paren ->
     lp ctx paren.enc_open;
     parse_node ctx paren.enc_desc;
@@ -444,6 +449,94 @@ and parse_spec_type ctx spec =
     parse_spec_type ctx spec.union_right
 
   | _ -> ()
+
+and parse_fun_body ctx body =
+  let open Context in
+  Seplist.iter body
+    ~f:(fun sep clause ->
+        parse_fun_clause ctx clause;
+        Option.iter sep ~f:(fun sep ->
+            semi ctx sep))
+
+and parse_fun_clause ctx clause =
+  let open Context in
+  Option.iter clause.fun_clause_name ~f:(text ctx);
+  lp ctx clause.fun_clause_open;
+  parse_exp_list ctx clause.fun_clause_ptns;
+  rp ctx clause.fun_clause_close;
+  space ctx clause.fun_clause_close 1;
+  rarrow ctx clause.fun_clause_arrow;
+  space ctx clause.fun_clause_arrow 1;
+  begin match clause.fun_clause_when, clause.fun_clause_guard with
+    | Some when_, Some guard ->
+      string ctx when_ "when";
+      space ctx when_ 1
+    (* TODO: guard *)
+    | _ -> ()
+  end;
+  parse_exp_list ctx clause.fun_clause_body;
+  ()
+
+and parse_exp_list ctx es =
+  let open Context in
+  Seplist.iter es
+    ~f:(fun sep e ->
+        parse_exp ctx e;
+        Option.iter sep ~f:(fun sep ->
+            string ctx sep ","))
+
+and parse_exp ctx e =
+  let open Context in
+  match e with
+  | Binexp e ->
+    parse_exp ctx e.binexp_left;
+    space ctx e.binexp_op.loc 1;
+    parse_op ctx e.binexp_op;
+    space ctx e.binexp_op.loc 1;
+    parse_exp ctx e.binexp_right
+
+  | Var name -> text ctx name
+  | _ -> ()
+
+and parse_op ctx op =
+  let open Context in
+  let s = match op.desc with
+    | Op_pos       -> "+"
+    | Op_neg       -> "-"
+    | Op_not       -> "not"
+    | Op_lnot      -> "bnot"
+    | Op_eq        -> "="
+    | Op_ep        -> "!"
+    | Op_eqq       -> "=="
+    | Op_ne        -> "/="
+    | Op_le        -> "=<"
+    | Op_lt        -> "<"
+    | Op_ge        -> ">="
+    | Op_gt        -> ">"
+    | Op_xeq       -> "=:="
+    | Op_xne       -> "=/="
+    | Op_list_add  -> "++"
+    | Op_list_diff -> "--"
+    | Op_add       -> "+"
+    | Op_sub       -> "-"
+    | Op_mul       -> "*"
+    | Op_div       -> "/"
+    | Op_quo       -> "div"
+    | Op_rem       -> "rem"
+    | Op_and       -> "and"
+    | Op_andalso   -> "andalso"
+    | Op_or        -> "or"
+    | Op_orelse    -> "orelse"
+    | Op_xor       -> "xor"
+    | Op_sand      -> "andalso"
+    | Op_sor       -> "orelse"
+    | Op_land      -> "band"
+    | Op_lor       -> "bor"
+    | Op_lxor      -> "bxor"
+    | Op_lshift    -> "bsl"
+    | Op_rshift    -> "bsr"
+  in
+  string ctx op.loc s
 
 let format file node =
   let ctx = Context.create file in

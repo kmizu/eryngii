@@ -426,6 +426,11 @@ and parse_spec_type ctx spec =
     parse_spec_type ctx spec.enc_desc;
     rbk ctx spec.enc_close
 
+  | Union spec ->
+    parse_spec_type ctx spec.union_left;
+    string ctx spec.union_op " | ";
+    parse_spec_type ctx spec.union_right
+
   | _ -> ()
 
 let format file node =

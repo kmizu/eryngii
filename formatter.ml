@@ -17,7 +17,9 @@ module Op = struct
     | Rbrace
     | Indent
     | Dedent
+    | Semi
     | Dot
+    | Rarrow
 
   type t = {
     pos : int;
@@ -48,7 +50,9 @@ module Op = struct
     | Rbrack
     | Lbrace
     | Rbrace
+    | Semi
     | Dot -> Some 1
+    | Rarrow -> Some 2
 
   let length_exn op =
     Option.value_exn (length op)
@@ -76,7 +80,9 @@ module Op = struct
     | Rbrack -> "']'"
     | Lbrace -> "'{'"
     | Rbrace -> "'}'"
+    | Semi -> "';'"
     | Dot -> "'.'"
+    | Rarrow -> "'->'"
     | Indent -> "indent"
     | Dedent -> "dedent"
 
@@ -183,8 +189,14 @@ module Context = struct
   let rbe ctx loc =
     add_loc ctx loc Rbrace
 
+  let semi ctx loc =
+    add_loc ctx loc Semi
+
   let dot ctx loc =
     add_loc ctx loc Dot
+
+  let rarrow ctx loc =
+    add_loc ctx loc Rarrow
 
   let indent ctx loc =
     add_loc ctx loc Indent
@@ -233,11 +245,14 @@ let count_indent (ops:Op.t list) =
           match op.desc with
           | Lparen | Lbrack | Lbrace ->
             (col+1, col+1 :: depth, op :: accu)
-          | Rparen | Rbrack | Rbrace | Dot ->
+          | Rparen | Rbrack | Rbrace | Semi | Dot ->
             (col+1, List.tl_exn depth, op :: accu)
           | Newline _ ->
             let indent = Op.create op.pos (Space (List.hd_exn depth)) in
             (0, depth, indent :: op :: accu)
+          | Rarrow ->
+            let size = List.hd_exn depth + 4 in
+            (col+2, size :: depth, op :: accu)
           | Indent ->
             let size = List.hd_exn depth + 4 in
             (col, size :: depth, accu)
@@ -277,7 +292,9 @@ let write len (ops:Op.t list) =
         | Rbrack -> replace op.pos "]"
         | Lbrace -> replace op.pos "{"
         | Rbrace -> replace op.pos "}"
+        | Semi -> replace op.pos ";"
         | Dot -> replace op.pos "."
+        | Rarrow -> replace op.pos "->"
         | Nop 
         | Indent
         | Dedent -> ()

@@ -341,6 +341,7 @@ let rec parse_node ctx node =
 
   | Spec_attr attr ->
     text ctx attr.spec_attr_tag; (* -spec *)
+    indent ctx attr.spec_attr_tag.loc;
     space ctx attr.spec_attr_tag.loc 1;
     begin match attr.spec_attr_mname with
       | None -> ()
@@ -349,7 +350,7 @@ let rec parse_node ctx node =
         string ctx colon ":"
     end;
     text ctx attr.spec_attr_fname;
-    indent ctx attr.spec_attr_fname.loc;
+    dedent ctx attr.spec_attr_fname.loc;
 
     Seplist.iter attr.spec_attr_clauses
       ~f:(fun sep clause ->
@@ -362,13 +363,13 @@ let rec parse_node ctx node =
                       string ctx sep ", ")
                 ));
           rp ctx clause.spec_clause_close;
-          string ctx clause.spec_clause_arrow " -> ";
+          space ctx clause.spec_clause_close 1;
+          rarrow ctx clause.spec_clause_arrow;
+          space ctx clause.spec_clause_arrow 1;
           parse_spec_type ctx clause.spec_clause_return;
-          Option.iter sep ~f:(fun sep ->
-              string ctx sep ","));
+          Option.iter sep ~f:(semi ctx));
 
-    dot ctx attr.spec_attr_dot;
-    dedent ctx attr.spec_attr_dot
+    dot ctx attr.spec_attr_dot
 
   | Paren paren ->
     lp ctx paren.enc_open;

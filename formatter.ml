@@ -387,7 +387,8 @@ let rec parse_node ctx node =
     lparen ctx attr.modname_attr_open;
     text ctx attr.modname_attr_name;
     rparen ctx attr.modname_attr_close;
-    dot ctx attr.modname_attr_dot
+    dot ctx attr.modname_attr_dot;
+    dedent_last ctx
 
   | Export_attr attr ->
     text ctx attr.export_attr_tag; (* -export *)
@@ -397,7 +398,8 @@ let rec parse_node ctx node =
     parse_fun_sigs ctx attr.export_attr_funs;
     rbrack ctx attr.export_attr_fun_close;
     rparen ctx attr.export_attr_close;
-    dot ctx attr.export_attr_dot
+    dot ctx attr.export_attr_dot;
+    dedent_last ctx
 
   | Import_attr attr ->
     text ctx attr.import_attr_tag; (* -import *)
@@ -409,7 +411,8 @@ let rec parse_node ctx node =
     parse_fun_sigs ctx attr.import_attr_funs;
     lbrack ctx attr.import_attr_fun_close;
     rparen ctx attr.import_attr_close;
-    dot ctx attr.import_attr_dot
+    dot ctx attr.import_attr_dot;
+    dedent_last ctx
 
   | Include_attr attr ->
     text ctx attr.include_attr_tag; (* -include *)
@@ -417,7 +420,8 @@ let rec parse_node ctx node =
     lparen ctx attr.include_attr_open;
     erl_string ctx attr.include_attr_file;
     rparen ctx attr.include_attr_close;
-    dot ctx attr.include_attr_dot
+    dot ctx attr.include_attr_dot;
+    dedent_last ctx
 
   | Define_attr attr ->
     text ctx attr.def_attr_tag; (* -define *)
@@ -435,11 +439,12 @@ let rec parse_node ctx node =
     space ctx attr.def_attr_comma 1;
     parse_node ctx attr.def_attr_value;
     rparen ctx attr.def_attr_close;
-    dot ctx attr.def_attr_dot
+    dot ctx attr.def_attr_dot;
+    dedent_last ctx
 
   | Spec_attr attr ->
     text ctx attr.spec_attr_tag; (* -spec *)
-    indent ctx attr.spec_attr_tag.loc;
+    indent ctx attr.spec_attr_tag.loc; (* tag *)
     space ctx attr.spec_attr_tag.loc 1;
     begin match attr.spec_attr_mname with
       | None -> ()
@@ -448,9 +453,9 @@ let rec parse_node ctx node =
         string ctx colon ":"
     end;
     text ctx attr.spec_attr_fname;
-    dedent ctx attr.spec_attr_fname.loc;
-    a_indent ctx attr.spec_attr_fname.loc;
 
+    (* spec_clauses *)
+    a_indent ctx attr.spec_attr_fname.loc;
     Seplist.iter attr.spec_attr_clauses
       ~f:(fun sep clause ->
           (* TODO: guard *)
@@ -466,10 +471,13 @@ let rec parse_node ctx node =
           rarrow ctx clause.spec_clause_arrow;
           space ctx clause.spec_clause_arrow 1;
           parse_spec_type ctx clause.spec_clause_return;
-          Option.iter sep ~f:(semi ctx));
+          match sep with
+          | Some sep -> semi ctx sep
+          | None -> dedent_last ctx);
+    dedent_last ctx;
 
     dot ctx attr.spec_attr_dot;
-    dedent ctx attr.spec_attr_dot
+    dedent_last ctx (* tag *)
 
   | Fun_decl decl ->
     parse_fun_body ctx decl.fun_decl_body;
@@ -680,7 +688,8 @@ and parse_fun_body ctx body =
     ~f:(fun sep clause ->
         parse_fun_clause ctx clause;
         Option.iter sep ~f:(fun sep ->
-            semi ctx sep))
+            semi ctx sep));
+  dedent_last ctx
 
 and parse_fun_clause ctx clause =
   let open Context in

@@ -23,6 +23,8 @@ module Op = struct
     | Semi
     | Comma
     | Dot
+    | Larrow
+    | Larrow2
     | Rarrow
 
   type t = {
@@ -60,6 +62,8 @@ module Op = struct
     | Dot -> Some 1
     | Lbin
     | Rbin
+    | Larrow
+    | Larrow2
     | Rarrow -> Some 2
 
   let length_exn op =
@@ -93,6 +97,8 @@ module Op = struct
     | Semi -> "';'"
     | Comma -> "','"
     | Dot -> "'.'"
+    | Larrow -> "'<-'"
+    | Larrow2 -> "'<='"
     | Rarrow -> "'->'"
     | Leveled_indent -> "l_indent"
     | Aligned_indent -> "a_indent"
@@ -221,6 +227,12 @@ module Context = struct
   let dot ctx loc =
     add_loc ctx loc Dot
 
+  let larrow ctx loc =
+    add_loc ctx loc Larrow
+
+  let larrow2 ctx loc =
+    add_loc ctx loc Larrow2
+
   let rarrow ctx loc =
     add_loc ctx loc Rarrow
 
@@ -273,16 +285,16 @@ let count_indent (ops:Op.t list) =
           Conf.debug "count_indent: col %d: depth %d: %s"
             col (List.length depth) (Op.to_string op);
           match op.desc with
-          | Lparen | Lbrack | Lbrace ->
+          | Lparen | Lbrack | Lbrace | Lbin ->
             (col+1, col+1 :: depth, op :: accu)
-          | Rparen | Rbrack | Rbrace | Semi | Dot ->
+          | Rparen | Rbrack | Rbrace | Rbin | Semi | Dot ->
             (col+1, List.tl_exn depth, op :: accu)
+          | Larrow | Larrow2 | Rarrow ->
+            let size = List.hd_exn depth + 4 in
+            (col+2, size :: depth, op :: accu)
           | Newline _ ->
             let indent = Op.create op.pos (Space (List.hd_exn depth)) in
             (0, depth, indent :: op :: accu)
-          | Rarrow ->
-            let size = List.hd_exn depth + 4 in
-            (col+2, size :: depth, op :: accu)
           | Leveled_indent ->
             let size = List.hd_exn depth + 4 in
             (col, size :: depth, accu)
@@ -329,6 +341,8 @@ let write len (ops:Op.t list) =
         | Semi -> replace op.pos ";"
         | Comma -> replace op.pos ","
         | Dot -> replace op.pos "."
+        | Larrow -> replace op.pos "<-"
+        | Larrow2 -> replace op.pos "<="
         | Rarrow -> replace op.pos "->"
         | Nop 
         | Leveled_indent
@@ -452,6 +466,9 @@ let rec parse_node ctx node =
   | Var name ->
     text ctx name
 
+  | Uscore name ->
+    text ctx name
+
   | Atom name ->
     atom ctx name
 
@@ -503,6 +520,28 @@ let rec parse_node ctx node =
         text ctx ty
       | _ -> ()
     end
+
+  | List_compr compr ->
+    parse_compr ctx compr
+
+  | List_compr_gen gen ->
+    parse_node ctx gen.gen_ptn;
+    space ctx gen.gen_arrow 1;
+    larrow ctx gen.gen_arrow;
+    space ctx gen.gen_arrow 1;
+    parse_node ctx gen.gen_exp;
+    dedent ctx (last_loc_exn ctx)
+
+  | Binary_compr compr ->
+    parse_compr ctx compr
+
+  | Binary_compr_gen gen ->
+    parse_node ctx gen.bin_gen_ptn;
+    space ctx gen.bin_gen_arrow 1;
+    larrow2 ctx gen.bin_gen_arrow;
+    space ctx gen.bin_gen_arrow 1;
+    parse_node ctx gen.bin_gen_exp;
+    dedent ctx (last_loc_exn ctx)
 
   | Macro macro ->
     string ctx macro.macro_q "?";
@@ -626,6 +665,16 @@ and parse_cr_clause ctx clause =
   space ctx clause.cr_clause_arrow 1;
   rarrow ctx clause.cr_clause_arrow;
   parse_node_list ctx clause.cr_clause_body
+
+and parse_compr ctx compr =
+  let open Context in
+  lbin ctx compr.compr_open;
+  space ctx compr.compr_open 1;
+  parse_node ctx compr.compr_exp;
+  string ctx compr.compr_sep " || ";
+  parse_node_list ctx compr.compr_quals;
+  space ctx compr.compr_close 1;
+  rbin ctx compr.compr_close
 
 and parse_node_list ctx es =
   let open Context in

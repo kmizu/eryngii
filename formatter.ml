@@ -491,17 +491,26 @@ and parse_fun_clause ctx clause =
   parse_node_list ctx clause.fun_clause_ptns;
   rp ctx clause.fun_clause_close;
   space ctx clause.fun_clause_close 1;
-  rarrow ctx clause.fun_clause_arrow;
-  space ctx clause.fun_clause_arrow 1;
   begin match clause.fun_clause_when, clause.fun_clause_guard with
     | Some when_, Some guard ->
       string ctx when_ "when";
-      space ctx when_ 1
-    (* TODO: guard *)
+      space ctx when_ 1;
+      parse_guard ctx guard;
+      space ctx clause.fun_clause_arrow 1;
     | _ -> ()
   end;
+  rarrow ctx clause.fun_clause_arrow;
+  space ctx clause.fun_clause_arrow 1;
   parse_node_list ctx clause.fun_clause_body;
   ()
+
+and parse_guard ctx guard =
+  let open Context in
+  Seplist.iter guard
+    ~f:(fun sep es ->
+        parse_node_list ctx es;
+        Option.iter sep ~f:(fun sep ->
+            semi ctx sep));
 
 and parse_node_list ctx es =
   let open Context in

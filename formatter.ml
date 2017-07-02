@@ -250,6 +250,9 @@ module Context = struct
   let dedent ctx loc =
     add_loc ctx loc Dedent
 
+  let dedent_last ctx =
+    dedent ctx @@ last_loc_exn ctx
+
 end
 
 let sort ops =
@@ -506,15 +509,15 @@ let rec parse_node ctx node =
         Option.iter sep ~f:(fun sep ->
             semi ctx sep;
             space ctx sep 1));
-    dedent ctx (last_loc_exn ctx);
-    dedent ctx (last_loc_exn ctx);
+    dedent_last ctx;
+    dedent_last ctx;
     space ctx if_.if_end 1;
     string ctx if_.if_end "end"
 
   | Anon_fun fun_ ->
     string ctx fun_.anon_fun_begin "fun";
     parse_fun_body ctx fun_.anon_fun_body;
-    dedent ctx (last_loc_exn ctx);
+    dedent_last ctx;
     string ctx fun_.anon_fun_end "end"
 
   | Binexp e ->
@@ -594,7 +597,7 @@ let rec parse_node ctx node =
     larrow ctx gen.gen_arrow;
     space ctx gen.gen_arrow 1;
     parse_node ctx gen.gen_exp;
-    dedent ctx (last_loc_exn ctx)
+    dedent_last ctx
 
   | Binary_compr compr ->
     parse_compr ctx compr
@@ -605,7 +608,7 @@ let rec parse_node ctx node =
     larrow2 ctx gen.bin_gen_arrow;
     space ctx gen.bin_gen_arrow 1;
     parse_node ctx gen.bin_gen_exp;
-    dedent ctx (last_loc_exn ctx)
+    dedent_last ctx
 
   | Macro macro ->
     string ctx macro.macro_q "?";
@@ -711,8 +714,8 @@ and parse_cr_clauses ctx clauses =
         parse_cr_clause ctx clause;
         match sep with
         | Some sep -> semi ctx sep
-        | None -> dedent ctx (last_loc_exn ctx));
-  dedent ctx (last_loc_exn ctx)
+        | None -> dedent_last ctx);
+  dedent_last ctx
 
 and parse_cr_clause ctx clause =
   let open Context in

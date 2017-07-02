@@ -15,6 +15,8 @@ module Op = struct
     | Rbrack
     | Lbrace
     | Rbrace
+    | Lbin (* << *)
+    | Rbin (* >> *)
     | Leveled_indent
     | Aligned_indent
     | Dedent
@@ -56,6 +58,8 @@ module Op = struct
     | Semi
     | Comma
     | Dot -> Some 1
+    | Lbin
+    | Rbin
     | Rarrow -> Some 2
 
   let length_exn op =
@@ -84,6 +88,8 @@ module Op = struct
     | Rbrack -> "']'"
     | Lbrace -> "'{'"
     | Rbrace -> "'}'"
+    | Lbin -> "'<<'"
+    | Rbin -> "'>>'"
     | Semi -> "';'"
     | Comma -> "','"
     | Dot -> "'.'"
@@ -194,6 +200,12 @@ module Context = struct
 
   let rbrace ctx loc =
     add_loc ctx loc Rbrace
+
+  let lbin ctx loc =
+    add_loc ctx loc Lbin
+
+  let rbin ctx loc =
+    add_loc ctx loc Rbin
 
   let semi ctx loc =
     add_loc ctx loc Semi
@@ -307,6 +319,8 @@ let write len (ops:Op.t list) =
         | Rbrack -> replace op.pos "]"
         | Lbrace -> replace op.pos "{"
         | Rbrace -> replace op.pos "}"
+        | Lbin -> replace op.pos "<<"
+        | Rbin -> replace op.pos ">>"
         | Semi -> replace op.pos ";"
         | Comma -> replace op.pos ","
         | Dot -> replace op.pos "."

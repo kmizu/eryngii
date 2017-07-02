@@ -145,6 +145,11 @@ module Context = struct
   let last_pos_exn ctx =
     Option.value_exn (last_pos ctx)
 
+  let last_loc_exn ctx =
+    let pos = last_pos_exn ctx in
+    let pos = { Position.line = 0; col = 0; offset = pos } in
+    Location.create pos pos
+
   let add ctx op =
     ctx.ops <- op :: ctx.ops
 
@@ -421,6 +426,17 @@ let rec parse_node ctx node =
     parse_node_list ctx call.call_args;
     rparen ctx call.call_close
 
+  | Case case ->
+    string ctx case.case_begin "case";
+    space ctx case.case_begin 1;
+    parse_node ctx case.case_exp;
+    space ctx case.case_of 1;
+    string ctx case.case_of "of";
+    indent ctx case.case_of;
+    space ctx case.case_of 1;
+    parse_cr_clauses ctx case.case_clauses;
+    string ctx case.case_end "end"
+
   | Binexp e ->
     parse_node ctx e.binexp_left;
     space ctx e.binexp_op.loc 1;
@@ -487,6 +503,10 @@ let rec parse_node ctx node =
         text ctx ty
       | _ -> ()
     end
+
+  | Macro macro ->
+    string ctx macro.macro_q "?";
+    text ctx macro.macro_name
 
   | Nop -> ()
   | _ -> ()
@@ -581,6 +601,31 @@ and parse_guard ctx guard =
         parse_node_list ctx es;
         Option.iter sep ~f:(fun sep ->
             semi ctx sep));
+
+and parse_cr_clauses ctx clauses =
+  let open Context in
+  Seplist.iter clauses
+    ~f:(fun sep clause ->
+        parse_cr_clause ctx clause;
+        match sep with
+        | Some sep -> semi ctx sep
+        | None -> dedent ctx (last_loc_exn ctx));
+  dedent ctx (last_loc_exn ctx)
+
+and parse_cr_clause ctx clause =
+  let open Context in
+  parse_node ctx clause.cr_clause_ptn;
+  begin match clause.cr_clause_when, clause.cr_clause_guard with
+    | Some when_, Some guard ->
+      space ctx when_ 1;
+      string ctx when_ "when";
+      space ctx when_ 1;
+      parse_guard ctx guard
+    | _ -> ()
+  end;
+  space ctx clause.cr_clause_arrow 1;
+  rarrow ctx clause.cr_clause_arrow;
+  parse_node_list ctx clause.cr_clause_body
 
 and parse_node_list ctx es =
   let open Context in

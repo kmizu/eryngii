@@ -177,22 +177,22 @@ module Context = struct
   let newline ctx loc n =
     add_loc ctx loc (Newline n)
 
-  let lp ctx loc =
+  let lparen ctx loc =
     add_loc ctx loc Lparen
 
-  let rp ctx loc =
+  let rparen ctx loc =
     add_loc ctx loc Rparen
 
-  let lbk ctx loc =
+  let lbrack ctx loc =
     add_loc ctx loc Lbrack
 
-  let rbk ctx loc =
+  let rbrack ctx loc =
     add_loc ctx loc Rbrack
 
-  let lbe ctx loc =
+  let lbrace ctx loc =
     add_loc ctx loc Lbrace
 
-  let rbe ctx loc =
+  let rbrace ctx loc =
     add_loc ctx loc Rbrace
 
   let semi ctx loc =
@@ -341,19 +341,19 @@ let rec parse_node ctx node =
   | Modname_attr attr ->
     text ctx attr.modname_attr_tag; (* -module *)
     indent ctx attr.modname_attr_tag.loc;
-    lp ctx attr.modname_attr_open;
+    lparen ctx attr.modname_attr_open;
     text ctx attr.modname_attr_name;
-    rp ctx attr.modname_attr_close;
+    rparen ctx attr.modname_attr_close;
     dot ctx attr.modname_attr_dot
 
   | Export_attr attr ->
     text ctx attr.export_attr_tag; (* -export *)
     indent ctx attr.export_attr_tag.loc;
-    lp ctx attr.export_attr_open;
-    lbk ctx attr.export_attr_fun_open;
+    lparen ctx attr.export_attr_open;
+    lbrack ctx attr.export_attr_fun_open;
     parse_fun_sigs ctx attr.export_attr_funs;
-    rbk ctx attr.export_attr_fun_close;
-    rp ctx attr.export_attr_close;
+    rbrack ctx attr.export_attr_fun_close;
+    rparen ctx attr.export_attr_close;
     dot ctx attr.export_attr_dot
 
   | Spec_attr attr ->
@@ -373,14 +373,14 @@ let rec parse_node ctx node =
     Seplist.iter attr.spec_attr_clauses
       ~f:(fun sep clause ->
           (* TODO: guard *)
-          lp ctx clause.spec_clause_open;
+          lparen ctx clause.spec_clause_open;
           Option.iter clause.spec_clause_args ~f:(fun args ->
               Seplist.iter args ~f:(fun sep arg->
                   parse_spec_type ctx arg;
                   Option.iter sep ~f:(fun sep ->
                       string ctx sep ", ")
                 ));
-          rp ctx clause.spec_clause_close;
+          rparen ctx clause.spec_clause_close;
           space ctx clause.spec_clause_close 1;
           rarrow ctx clause.spec_clause_arrow;
           space ctx clause.spec_clause_arrow 1;
@@ -395,7 +395,7 @@ let rec parse_node ctx node =
     dot ctx decl.fun_decl_dot
 
   | Call call ->
-    lp ctx call.call_open;
+    lparen ctx call.call_open;
     begin match call.call_fname.fun_name_mname,
                 call.call_fname.fun_name_colon with
     | Some name, Some colon ->
@@ -405,7 +405,7 @@ let rec parse_node ctx node =
     end;
     parse_node ctx call.call_fname.fun_name_fname;
     parse_node_list ctx call.call_args;
-    rp ctx call.call_close
+    rparen ctx call.call_close
 
   | Binexp e ->
     parse_node ctx e.binexp_left;
@@ -415,9 +415,9 @@ let rec parse_node ctx node =
     parse_node ctx e.binexp_right
 
   | Paren paren ->
-    lp ctx paren.enc_open;
+    lparen ctx paren.enc_open;
     parse_node ctx paren.enc_desc;
-    rp ctx paren.enc_close
+    rparen ctx paren.enc_close
 
   | Var name ->
     text ctx name
@@ -426,7 +426,7 @@ let rec parse_node ctx node =
     atom ctx name
 
   | List list ->
-    lbk ctx list.list_open;
+    lbrack ctx list.list_open;
     parse_node_list ctx list.list_head;
     begin match list.list_bar, list.list_tail with
       | Some bar, Some tail ->
@@ -434,7 +434,7 @@ let rec parse_node ctx node =
         parse_node ctx tail
       | _ -> ()
     end;
-    rbk ctx list.list_close
+    rbrack ctx list.list_close
 
   | Nop -> ()
   | _ -> ()
@@ -459,9 +459,9 @@ and parse_spec_type ctx spec =
   let open Context in
   match spec with
   | Spec_type.Paren paren ->
-    lp ctx paren.enc_open;
+    lparen ctx paren.enc_open;
     parse_spec_type ctx paren.enc_desc;
-    rp ctx paren.enc_close
+    rparen ctx paren.enc_close
 
   | Named named ->
     begin match (named.named_module, named.named_colon) with
@@ -471,21 +471,21 @@ and parse_spec_type ctx spec =
       | _ -> ()
     end;
     text ctx named.named_name;
-    lp ctx named.named_open;
+    lparen ctx named.named_open;
     Option.iter named.named_args ~f:(fun args ->
         Seplist.iter args
           ~f:(fun sep arg ->
               parse_spec_type ctx arg;
               Option.iter sep ~f:(fun sep -> string ctx sep ", ")));
-    rp ctx named.named_close
+    rparen ctx named.named_close
 
   | Atom name ->
     atom ctx name
 
   | List spec ->
-    lbk ctx spec.enc_open;
+    lbrack ctx spec.enc_open;
     parse_spec_type ctx spec.enc_desc;
-    rbk ctx spec.enc_close
+    rbrack ctx spec.enc_close
 
   | Union spec ->
     parse_spec_type ctx spec.union_left;
@@ -505,9 +505,9 @@ and parse_fun_body ctx body =
 and parse_fun_clause ctx clause =
   let open Context in
   Option.iter clause.fun_clause_name ~f:(text ctx);
-  lp ctx clause.fun_clause_open;
+  lparen ctx clause.fun_clause_open;
   parse_node_list ctx clause.fun_clause_ptns;
-  rp ctx clause.fun_clause_close;
+  rparen ctx clause.fun_clause_close;
   space ctx clause.fun_clause_close 1;
   begin match clause.fun_clause_when, clause.fun_clause_guard with
     | Some when_, Some guard ->

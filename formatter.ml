@@ -439,6 +439,24 @@ let rec parse_node ctx node =
   | Atom name ->
     atom ctx name
 
+  | Char name ->
+    text ctx name
+
+  | Int value ->
+    text ctx value
+
+  | Float value ->
+    text ctx value
+
+  | String values ->
+    let len = List.length values in
+    List.iteri values ~f:(fun i value ->
+        string ctx value.loc "\"";
+        text ctx value;
+        string ctx value.loc "\"";
+        if i+1 < len then
+          space ctx value.loc 1)
+
   | List list ->
     lbrack ctx list.list_open;
     parse_node_list ctx list.list_head;
@@ -449,6 +467,26 @@ let rec parse_node ctx node =
       | _ -> ()
     end;
     rbrack ctx list.list_close
+
+  | Binary bin ->
+    lbin ctx bin.enc_open;
+    parse_node_list ctx bin.enc_desc;
+    rbin ctx bin.enc_close
+
+  | Binary_elt elt ->
+    parse_node ctx elt.bin_elt_val;
+    begin match elt.bin_elt_colon, elt.bin_elt_size with
+      | Some colon, Some size ->
+        string ctx colon ":";
+        text ctx size
+      | _ -> ()
+    end;
+    begin match elt.bin_elt_slash, elt.bin_elt_type with
+      | Some slash, Some ty ->
+        string ctx slash "/";
+        text ctx ty
+      | _ -> ()
+    end
 
   | Nop -> ()
   | _ -> ()

@@ -389,6 +389,28 @@ let rec parse_node ctx node =
     rparen ctx attr.export_attr_close;
     dot ctx attr.export_attr_dot
 
+  | Import_attr attr ->
+    text ctx attr.import_attr_tag; (* -import *)
+    indent ctx attr.import_attr_tag.loc;
+    lparen ctx attr.import_attr_open;
+    text ctx attr.import_attr_module;
+    comma ctx attr.import_attr_comma;
+    lbrack ctx attr.import_attr_fun_open;
+    parse_fun_sigs ctx attr.import_attr_funs;
+    lbrack ctx attr.import_attr_fun_close;
+    rparen ctx attr.import_attr_close;
+    dot ctx attr.import_attr_dot
+
+  | Include_attr attr ->
+    text ctx attr.include_attr_tag; (* -include *)
+    indent ctx attr.include_attr_tag.loc;
+    lparen ctx attr.include_attr_open;
+    string ctx attr.include_attr_file.loc "\"";
+    text ctx attr.include_attr_file;
+    string ctx attr.include_attr_file.loc "\"";
+    rparen ctx attr.include_attr_close;
+    dot ctx attr.include_attr_dot
+
   | Spec_attr attr ->
     text ctx attr.spec_attr_tag; (* -spec *)
     indent ctx attr.spec_attr_tag.loc;

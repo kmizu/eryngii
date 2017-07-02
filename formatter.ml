@@ -290,31 +290,33 @@ let count_indent (ops:Op.t list) =
   let open Op in
   let _, _, rev_ops = List.fold_left ops ~init:(0, [0], [])
       ~f:(fun (col, depth, accu) op ->
+          let col, depth, accu = match op.desc with
+            | Lparen | Lbrack | Lbrace | Lbin ->
+              (col+1, col+1 :: depth, op :: accu)
+            | Rparen | Rbrack | Rbrace | Rbin | Semi ->
+              (col+1, List.tl_exn depth, op :: accu)
+            | Larrow | Larrow2 | Rarrow ->
+              let size = List.hd_exn depth + 4 in
+              (col+2, size :: depth, op :: accu)
+            | Newline _ ->
+              let indent = Op.create op.pos (Space (List.hd_exn depth)) in
+              (0, depth, indent :: op :: accu)
+            | Leveled_indent ->
+              let size = List.length depth * 4 in
+              (col, size :: depth, accu)
+            | Aligned_indent ->
+              (col, col :: depth, accu)
+            | Dedent ->
+              (col, List.tl_exn depth, accu)
+            | Comment _ ->
+              (col, depth, op :: accu)
+            | _ ->
+              let col = col + Option.value_exn (Op.length op) in
+              (col, depth, op :: accu)
+          in
           Conf.debug "count_indent: col %d: depth %d: %s"
-            col (List.length depth) (Op.to_string op);
-          match op.desc with
-          | Lparen | Lbrack | Lbrace | Lbin ->
-            (col+1, col+1 :: depth, op :: accu)
-          | Rparen | Rbrack | Rbrace | Rbin | Semi | Dot ->
-            (col+1, List.tl_exn depth, op :: accu)
-          | Larrow | Larrow2 | Rarrow ->
-            let size = List.hd_exn depth + 4 in
-            (col+2, size :: depth, op :: accu)
-          | Newline _ ->
-            let indent = Op.create op.pos (Space (List.hd_exn depth)) in
-            (0, depth, indent :: op :: accu)
-          | Leveled_indent ->
-            let size = List.length depth * 4 in
-            (col, size :: depth, accu)
-          | Aligned_indent ->
-            (col, col :: depth, accu)
-          | Dedent ->
-            (col, List.tl_exn depth, accu)
-          | Comment _ ->
-            (col, depth, op :: accu)
-          | _ ->
-            let col = col + Option.value_exn (Op.length op) in
-            (col, depth, op :: accu))
+            col ((List.length depth) - 1) (Op.to_string op);
+          (col, depth, accu))
   in
   List.rev rev_ops
 

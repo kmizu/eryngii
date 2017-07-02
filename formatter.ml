@@ -525,7 +525,8 @@ and parse_node_list ctx es =
     ~f:(fun sep e ->
         parse_node ctx e;
         Option.iter sep ~f:(fun sep ->
-            comma ctx sep))
+            comma ctx sep;
+            space ctx sep 1))
 
 and parse_op ctx op =
   let open Context in

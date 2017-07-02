@@ -301,7 +301,7 @@ let count_indent (ops:Op.t list) =
             let indent = Op.create op.pos (Space (List.hd_exn depth)) in
             (0, depth, indent :: op :: accu)
           | Leveled_indent ->
-            let size = List.hd_exn depth + 4 in
+            let size = List.length depth * 4 in
             (col, size :: depth, accu)
           | Aligned_indent ->
             (col, col :: depth, accu)
@@ -511,6 +511,12 @@ let rec parse_node ctx node =
     space ctx if_.if_end 1;
     string ctx if_.if_end "end"
 
+  | Anon_fun fun_ ->
+    string ctx fun_.anon_fun_begin "fun";
+    parse_fun_body ctx fun_.anon_fun_body;
+    dedent ctx (last_loc_exn ctx);
+    string ctx fun_.anon_fun_end "end"
+
   | Binexp e ->
     parse_node ctx e.binexp_left;
     space ctx e.binexp_op.loc 1;
@@ -688,8 +694,7 @@ and parse_fun_clause ctx clause =
   end;
   rarrow ctx clause.fun_clause_arrow;
   space ctx clause.fun_clause_arrow 1;
-  parse_node_list ctx clause.fun_clause_body;
-  ()
+  parse_node_list ctx clause.fun_clause_body
 
 and parse_guard ctx guard =
   let open Context in

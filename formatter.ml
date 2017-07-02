@@ -494,6 +494,23 @@ let rec parse_node ctx node =
     parse_cr_clauses ctx case.case_clauses;
     string ctx case.case_end "end"
 
+  | If if_ ->
+    string ctx if_.if_begin "if ";
+    indent ctx if_.if_begin;
+    Seplist.iter if_.if_clauses ~f:(fun sep clause ->
+        parse_guard ctx clause.if_clause_guard;
+        space ctx clause.if_clause_arrow 1;
+        rarrow ctx clause.if_clause_arrow;
+        space ctx clause.if_clause_arrow 1;
+        parse_node_list ctx clause.if_clause_body;
+        Option.iter sep ~f:(fun sep ->
+            semi ctx sep;
+            space ctx sep 1));
+    dedent ctx (last_loc_exn ctx);
+    dedent ctx (last_loc_exn ctx);
+    space ctx if_.if_end 1;
+    string ctx if_.if_end "end"
+
   | Binexp e ->
     parse_node ctx e.binexp_left;
     space ctx e.binexp_op.loc 1;

@@ -425,6 +425,17 @@ let rec parse_node ctx node =
   | Atom name ->
     atom ctx name
 
+  | List list ->
+    lbk ctx list.list_open;
+    parse_node_list ctx list.list_head;
+    begin match list.list_bar, list.list_tail with
+      | Some bar, Some tail ->
+        string ctx bar " | ";
+        parse_node ctx tail
+      | _ -> ()
+    end;
+    rbk ctx list.list_close
+
   | Nop -> ()
   | _ -> ()
 

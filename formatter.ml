@@ -414,6 +414,24 @@ let rec parse_node ctx node =
     rparen ctx attr.include_attr_close;
     dot ctx attr.include_attr_dot
 
+  | Define_attr attr ->
+    text ctx attr.def_attr_tag; (* -define *)
+    indent ctx attr.def_attr_tag.loc;
+    lparen ctx attr.def_attr_open;
+    let def_name = attr.def_attr_name in
+    text ctx def_name.def_name;
+    Option.iter def_name.def_args ~f:(fun args ->
+        lparen ctx args.enc_open;
+        Seplist.iter args.enc_desc ~f:(fun sep arg ->
+            text ctx arg;
+            Option.iter sep ~f:(fun sep -> comma ctx sep));
+        rparen ctx args.enc_close);
+    comma ctx attr.def_attr_comma;
+    space ctx attr.def_attr_comma 1;
+    parse_node ctx attr.def_attr_value;
+    rparen ctx attr.def_attr_close;
+    dot ctx attr.def_attr_dot
+
   | Spec_attr attr ->
     text ctx attr.spec_attr_tag; (* -spec *)
     indent ctx attr.spec_attr_tag.loc;

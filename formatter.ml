@@ -19,6 +19,7 @@ module Op = struct
     | Aligned_indent
     | Dedent
     | Semi
+    | Comma
     | Dot
     | Rarrow
 
@@ -53,6 +54,7 @@ module Op = struct
     | Lbrace
     | Rbrace
     | Semi
+    | Comma
     | Dot -> Some 1
     | Rarrow -> Some 2
 
@@ -83,6 +85,7 @@ module Op = struct
     | Lbrace -> "'{'"
     | Rbrace -> "'}'"
     | Semi -> "';'"
+    | Comma -> "','"
     | Dot -> "'.'"
     | Rarrow -> "'->'"
     | Leveled_indent -> "l_indent"
@@ -195,6 +198,9 @@ module Context = struct
   let semi ctx loc =
     add_loc ctx loc Semi
 
+  let comma ctx loc =
+    add_loc ctx loc Comma
+
   let dot ctx loc =
     add_loc ctx loc Dot
 
@@ -302,6 +308,7 @@ let write len (ops:Op.t list) =
         | Lbrace -> replace op.pos "{"
         | Rbrace -> replace op.pos "}"
         | Semi -> replace op.pos ";"
+        | Comma -> replace op.pos ","
         | Dot -> replace op.pos "."
         | Rarrow -> replace op.pos "->"
         | Nop 
@@ -518,7 +525,7 @@ and parse_node_list ctx es =
     ~f:(fun sep e ->
         parse_node ctx e;
         Option.iter sep ~f:(fun sep ->
-            string ctx sep ","))
+            comma ctx sep))
 
 and parse_op ctx op =
   let open Context in

@@ -177,6 +177,11 @@ module Context = struct
       text ctx name;
       string ctx name.loc "'"
 
+  let erl_string ctx s =
+    string ctx s.loc "\"";
+    text ctx s;
+    string ctx s.loc "\""
+
   let comment ctx text =
     let len = String.length text.desc in
     let buf = Buffer.create (len+1) in
@@ -405,9 +410,7 @@ let rec parse_node ctx node =
     text ctx attr.include_attr_tag; (* -include *)
     indent ctx attr.include_attr_tag.loc;
     lparen ctx attr.include_attr_open;
-    string ctx attr.include_attr_file.loc "\"";
-    text ctx attr.include_attr_file;
-    string ctx attr.include_attr_file.loc "\"";
+    erl_string ctx attr.include_attr_file;
     rparen ctx attr.include_attr_close;
     dot ctx attr.include_attr_dot
 
@@ -506,9 +509,7 @@ let rec parse_node ctx node =
   | String values ->
     let len = List.length values in
     List.iteri values ~f:(fun i value ->
-        string ctx value.loc "\"";
-        text ctx value;
-        string ctx value.loc "\"";
+        erl_string ctx value;
         if i+1 < len then
           space ctx value.loc 1)
 

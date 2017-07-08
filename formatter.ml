@@ -409,7 +409,7 @@ let rec parse_node ctx node =
     comma ctx attr.import_attr_comma;
     lbrack ctx attr.import_attr_fun_open;
     parse_fun_sigs ctx attr.import_attr_funs;
-    lbrack ctx attr.import_attr_fun_close;
+    rbrack ctx attr.import_attr_fun_close;
     rparen ctx attr.import_attr_close;
     dot ctx attr.import_attr_dot;
     dedent_last ctx

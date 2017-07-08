@@ -299,8 +299,9 @@ let count_indent (ops:Op.t list) =
               let size = List.hd_exn depth + 4 in
               (col+2, size :: depth, op :: accu)
             | Newline _ ->
-              let indent = Op.create op.pos (Space (List.hd_exn depth)) in
-              (0, depth, indent :: op :: accu)
+              let size = List.hd_exn depth in
+              let indent = Op.create op.pos (Space size) in
+              (size, depth, indent :: op :: accu)
             | Leveled_indent ->
               let size = List.length depth * 4 in
               (col, size :: depth, accu)

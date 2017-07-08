@@ -578,6 +578,11 @@ let rec parse_node ctx node =
     end;
     rbrack ctx list.list_close
 
+  | Tuple tuple ->
+    lbrace ctx tuple.enc_open;
+    parse_node_list ctx tuple.enc_desc;
+    rbrace ctx tuple.enc_close
+
   | Binary bin ->
     lbin ctx bin.enc_open;
     parse_node_list ctx bin.enc_desc;

@@ -407,6 +407,7 @@ let rec parse_node ctx node =
     lparen ctx attr.import_attr_open;
     text ctx attr.import_attr_module;
     comma ctx attr.import_attr_comma;
+    space ctx attr.import_attr_comma 1;
     lbrack ctx attr.import_attr_fun_open;
     parse_fun_sigs ctx attr.import_attr_funs;
     rbrack ctx attr.import_attr_fun_close;

@@ -553,7 +553,6 @@ let rec parse_node ctx node =
             space ctx sep 1));
     dedent_last ctx;
     dedent_last ctx;
-    space ctx if_.if_end 1;
     string ctx if_.if_end "end"
 
   | Anon_fun fun_ ->

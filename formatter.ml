@@ -19,6 +19,8 @@ module Op = struct
     | Rbin (* >> *)
     | Leveled_indent
     | Aligned_indent
+    | Label of [`Fun] * int
+    | Labeled_indent of [`Fun] * int
     | Dedent
     | Semi
     | Comma
@@ -46,6 +48,8 @@ module Op = struct
     | Nop
     | Leveled_indent
     | Aligned_indent
+    | Label _
+    | Labeled_indent _
     | Dedent -> None
     | Text s
     | Comment s -> Some (String.length s)
@@ -102,6 +106,8 @@ module Op = struct
     | Rarrow -> "'->'"
     | Leveled_indent -> "l_indent"
     | Aligned_indent -> "a_indent"
+    | Label _ -> "label"
+    | Labeled_indent _ -> "b_indent"
     | Dedent -> "dedent"
 
 end
@@ -247,6 +253,12 @@ module Context = struct
   let a_indent ctx loc =
     add_loc ctx loc Aligned_indent
 
+  let label ctx loc name =
+    add_loc ctx loc (Label (name, 0))
+
+  let b_indent ctx loc name extra =
+    add_loc ctx loc (Labeled_indent (name, extra))
+
   let dedent ctx loc =
     add_loc ctx loc Dedent
 
@@ -307,8 +319,24 @@ let count_indent (ops:Op.t list) =
               (col, size :: depth, accu)
             | Aligned_indent ->
               (col, col :: depth, accu)
+            | Labeled_indent (name, extra) ->
+              let found = List.find_map accu ~f:(fun op ->
+                  match op.desc with
+                  | Label (name2, base) when name = name2 ->
+                    let size = base + extra in
+                    let indent = Op.create op.pos (Space size) in
+                    Some (col, size :: depth, indent :: accu)
+                  | _ -> None)
+              in
+              begin match found with
+                | None -> failwith "labeled indent not found"
+                | Some accu -> accu
+              end
             | Dedent ->
               (col, List.tl_exn depth, accu)
+            | Label (name, _) ->
+              let op = Op.create op.pos (Label (name, col)) in
+              (col, depth, op :: accu)
             | Comment _ ->
               (col, depth, op :: accu)
             | _ ->
@@ -358,6 +386,8 @@ let write len (ops:Op.t list) =
         | Nop 
         | Leveled_indent
         | Aligned_indent
+        | Label _
+        | Labeled_indent _
         | Dedent -> ()
       );
   String.strip buf ^ "\n"

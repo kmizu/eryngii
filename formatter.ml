@@ -558,7 +558,9 @@ let rec parse_node ctx node =
 
   | Anon_fun fun_ ->
     string ctx fun_.anon_fun_begin "fun";
+    label ctx fun_.anon_fun_begin `Fun;
     parse_fun_body ctx fun_.anon_fun_body;
+    dedent_last ctx;
     dedent_last ctx;
     string ctx fun_.anon_fun_end "end"
 
@@ -730,11 +732,14 @@ and parse_fun_body ctx body =
 
 and parse_fun_clause ctx clause =
   let open Context in
+  let is_anon = Option.is_none clause.fun_clause_name in
   Option.iter clause.fun_clause_name ~f:(text ctx);
+
   lparen ctx clause.fun_clause_open;
   parse_node_list ctx clause.fun_clause_ptns;
   rparen ctx clause.fun_clause_close;
   space ctx clause.fun_clause_close 1;
+
   begin match clause.fun_clause_when, clause.fun_clause_guard with
     | Some when_, Some guard ->
       string ctx when_ "when";
@@ -743,8 +748,11 @@ and parse_fun_clause ctx clause =
       space ctx clause.fun_clause_arrow 1;
     | _ -> ()
   end;
+
   rarrow ctx clause.fun_clause_arrow;
   space ctx clause.fun_clause_arrow 1;
+  if is_anon then
+    b_indent ctx clause.fun_clause_arrow `Fun 4;
   parse_node_list ctx clause.fun_clause_body
 
 and parse_guard ctx guard =

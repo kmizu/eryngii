@@ -279,8 +279,9 @@ let compact_newlines (ops:Op.t list) =
         match (count, op.desc) with
         | None, Newline _ -> (Some 1, accu)
         | None, _ -> (None, op :: accu)
-        | Some _, Newline _ -> (Some 2, accu)
+        | Some n, Newline nl -> (Some (n + nl), accu)
         | Some n, _ ->
+          let n = min n 3 in
           let nl = Op.create op.pos (Newline n) in
           (None, op :: nl :: accu))
   |> snd

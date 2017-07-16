@@ -60,49 +60,6 @@ let main =
                printf "%s\n" fmt
              end))
 
-let test_format =
-  Command.basic
-    ~summary: "test formatter"
-    Command.Spec.(
-      empty
-      +> flag "-v" no_arg ~doc:" print verbose message"
-      +> anon ("expected" %: string)
-      +> anon ("actual" %: string)
-    )
-    (fun verbose expected actual () ->
-       Conf.verbose_mode := verbose;
-       parse_file (Some actual)
-         ~f:(fun lines node ->
-             let rec compare i ex_lines ac_lines =
-               match ex_lines, ac_lines with
-               | [], _
-               | _, [] ->
-                 printf "Error: two formatted files have different number of lines\n";
-                 exit 1
-               | ex :: ex_lines, ac :: ac_lines ->
-                 if verbose then begin
-                   printf "Line %d:\n" i;
-                   printf "    Expected -> \"%s\"\n" ex;
-                   printf "    Actual   -> \"%s\"\n" ac;
-                   printf "\n";
-                 end;
-                 if ex = ac then
-                   compare (i+1) ex_lines ac_lines
-                 else begin
-                   printf "Error: line %d:\n" i;
-                   printf "    Expected -> \"%s\"\n" ex;
-                   printf "    Actual   -> \"%s\"\n" ac;
-                   exit 1
-                 end
-             in
-             let ac = Formatter.format lines node |> String.split_lines in
-             let ex =
-               In_channel.create expected
-               |> In_channel.input_all
-               |> String.split_lines
-             in
-             compare 0 ex ac))
-
 let () =
   try
     Printexc.record_backtrace true;

@@ -523,8 +523,8 @@ let rec parse_node ctx node =
           match sep with
           | Some sep ->
             comma ctx sep;
-            space ctx sep 1;
-          | None -> dedent_last ctx);
+            space ctx sep 1
+          | None -> ());
     rbrack ctx attr.compile_attr_name_close;
     rparen ctx attr.compile_attr_close;
     dot ctx attr.compile_attr_dot;

@@ -40,6 +40,19 @@ let parse_file file ~f =
             exit (-1)
           | e -> raise e)
 
+let compare_texts before after =
+  printf "--------------------------------------------------------------\n";
+  printf "Compare difference before and after formatted texts: ";
+  let strip s =
+    String.filter before ~f:(fun c -> Char.is_whitespace c |> not)
+  in
+  if strip before = strip after then
+    printf "ok\n"
+  else begin
+    printf "failed\n";
+    exit (-1)
+  end
+
 let main =
   Command.basic
     ~summary:usage
@@ -48,16 +61,20 @@ let main =
       +> flag "-d" no_arg ~doc:" debug output"
       +> flag "-v" no_arg ~doc:" print verbose message"
       +> flag "-syntax" no_arg ~doc:" check syntax only"
+      +> flag "-test" no_arg ~doc:" check difference before and after formatted texts"
       +> anon (maybe ("filename" %: string))
     )
-    (fun debug verbose syntax file () ->
+    (fun debug verbose syntax test file () ->
        Conf.debug_mode := debug;
        Conf.verbose_mode := verbose;
        parse_file file
          ~f:(fun file node ->
              if not syntax then begin
-               let fmt = Formatter.format file node in
-               printf "%s\n" fmt
+               let before, after = Formatter.format file node in
+               printf "%s\n" after;
+               if test then begin
+                 compare_texts before after
+               end
              end))
 
 let () =

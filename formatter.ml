@@ -859,4 +859,4 @@ let format file node =
     |> compact_pos
   in
   Conf.debug "[%s]" (String.concat (List.map ops ~f:Op.to_string) ~sep:", ");
-  write len ops
+  (ctx.file.contents, write len ops)

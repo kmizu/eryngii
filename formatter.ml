@@ -456,6 +456,15 @@ let rec parse_node ctx node =
     dot ctx attr.include_attr_dot;
     dedent_last ctx
 
+  | Inclib_attr attr ->
+    text ctx attr.inclib_attr_tag; (* -include_lib *)
+    indent ctx attr.inclib_attr_tag.loc;
+    lparen ctx attr.inclib_attr_open;
+    erl_string ctx attr.inclib_attr_file;
+    rparen ctx attr.inclib_attr_close;
+    dot ctx attr.inclib_attr_dot;
+    dedent_last ctx
+
   | Define_attr attr ->
     text ctx attr.def_attr_tag; (* -define *)
     indent ctx attr.def_attr_tag.loc;

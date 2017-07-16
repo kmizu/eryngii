@@ -512,6 +512,24 @@ let rec parse_node ctx node =
     dot ctx attr.spec_attr_dot;
     dedent_last ctx (* tag *)
 
+  | Compile_attr attr ->
+    text ctx attr.compile_attr_tag; (* -compile *)
+    indent ctx attr.compile_attr_tag.loc;
+    lparen ctx attr.compile_attr_open;
+    lbrack ctx attr.compile_attr_name_open;
+    Seplist.iter attr.compile_attr_names
+      ~f:(fun sep name ->
+          atom ctx name;
+          match sep with
+          | Some sep ->
+            comma ctx sep;
+            space ctx sep 1;
+          | None -> dedent_last ctx);
+    rbrack ctx attr.compile_attr_name_close;
+    rparen ctx attr.compile_attr_close;
+    dot ctx attr.compile_attr_dot;
+    dedent_last ctx
+
   | Fun_decl decl ->
     parse_fun_body ctx decl.fun_decl_body;
     dot ctx decl.fun_decl_dot

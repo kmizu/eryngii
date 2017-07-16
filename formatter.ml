@@ -19,6 +19,8 @@ module Op = struct
     | Rbin (* >> *)
     | Leveled_indent
     | Aligned_indent
+    | Label of [`Fun] * int
+    | Labeled_indent of [`Fun] * int
     | Dedent
     | Semi
     | Comma
@@ -46,6 +48,8 @@ module Op = struct
     | Nop
     | Leveled_indent
     | Aligned_indent
+    | Label _
+    | Labeled_indent _
     | Dedent -> None
     | Text s
     | Comment s -> Some (String.length s)
@@ -102,6 +106,8 @@ module Op = struct
     | Rarrow -> "'->'"
     | Leveled_indent -> "l_indent"
     | Aligned_indent -> "a_indent"
+    | Label _ -> "label"
+    | Labeled_indent _ -> "b_indent"
     | Dedent -> "dedent"
 
 end
@@ -247,6 +253,12 @@ module Context = struct
   let a_indent ctx loc =
     add_loc ctx loc Aligned_indent
 
+  let label ctx loc name =
+    add_loc ctx loc (Label (name, 0))
+
+  let b_indent ctx loc name extra =
+    add_loc ctx loc (Labeled_indent (name, extra))
+
   let dedent ctx loc =
     add_loc ctx loc Dedent
 
@@ -267,8 +279,9 @@ let compact_newlines (ops:Op.t list) =
         match (count, op.desc) with
         | None, Newline _ -> (Some 1, accu)
         | None, _ -> (None, op :: accu)
-        | Some _, Newline _ -> (Some 2, accu)
+        | Some n, Newline nl -> (Some (n + nl), accu)
         | Some n, _ ->
+          let n = min n 3 in
           let nl = Op.create op.pos (Newline n) in
           (None, op :: nl :: accu))
   |> snd
@@ -290,31 +303,50 @@ let count_indent (ops:Op.t list) =
   let open Op in
   let _, _, rev_ops = List.fold_left ops ~init:(0, [0], [])
       ~f:(fun (col, depth, accu) op ->
+          let col, depth, accu = match op.desc with
+            | Lparen | Lbrack | Lbrace | Lbin ->
+              (col+1, col+1 :: depth, op :: accu)
+            | Rparen | Rbrack | Rbrace | Rbin | Semi ->
+              (col+1, List.tl_exn depth, op :: accu)
+            | Larrow | Larrow2 | Rarrow ->
+              let size = List.hd_exn depth + 4 in
+              (col+2, size :: depth, op :: accu)
+            | Newline _ ->
+              let size = List.hd_exn depth in
+              let indent = Op.create op.pos (Space size) in
+              (size, depth, indent :: op :: accu)
+            | Leveled_indent ->
+              let size = List.length depth * 4 in
+              (col, size :: depth, accu)
+            | Aligned_indent ->
+              (col, col :: depth, accu)
+            | Labeled_indent (name, extra) ->
+              let found = List.find_map accu ~f:(fun op ->
+                  match op.desc with
+                  | Label (name2, base) when name = name2 ->
+                    let size = base + extra in
+                    let indent = Op.create op.pos (Space size) in
+                    Some (col, size :: depth, indent :: accu)
+                  | _ -> None)
+              in
+              begin match found with
+                | None -> failwith "labeled indent not found"
+                | Some accu -> accu
+              end
+            | Dedent ->
+              (col, List.tl_exn depth, accu)
+            | Label (name, _) ->
+              let op = Op.create op.pos (Label (name, col)) in
+              (col, depth, op :: accu)
+            | Comment _ ->
+              (col, depth, op :: accu)
+            | _ ->
+              let col = col + Option.value_exn (Op.length op) in
+              (col, depth, op :: accu)
+          in
           Conf.debug "count_indent: col %d: depth %d: %s"
-            col (List.length depth) (Op.to_string op);
-          match op.desc with
-          | Lparen | Lbrack | Lbrace | Lbin ->
-            (col+1, col+1 :: depth, op :: accu)
-          | Rparen | Rbrack | Rbrace | Rbin | Semi | Dot ->
-            (col+1, List.tl_exn depth, op :: accu)
-          | Larrow | Larrow2 | Rarrow ->
-            let size = List.hd_exn depth + 4 in
-            (col+2, size :: depth, op :: accu)
-          | Newline _ ->
-            let indent = Op.create op.pos (Space (List.hd_exn depth)) in
-            (0, depth, indent :: op :: accu)
-          | Leveled_indent ->
-            let size = List.length depth * 4 in
-            (col, size :: depth, accu)
-          | Aligned_indent ->
-            (col, col :: depth, accu)
-          | Dedent ->
-            (col, List.tl_exn depth, accu)
-          | Comment _ ->
-            (col, depth, op :: accu)
-          | _ ->
-            let col = col + Option.value_exn (Op.length op) in
-            (col, depth, op :: accu))
+            col ((List.length depth) - 1) (Op.to_string op);
+          (col, depth, accu))
   in
   List.rev rev_ops
 
@@ -355,6 +387,8 @@ let write len (ops:Op.t list) =
         | Nop 
         | Leveled_indent
         | Aligned_indent
+        | Label _
+        | Labeled_indent _
         | Dedent -> ()
       );
   String.strip buf ^ "\n"
@@ -385,7 +419,8 @@ let rec parse_node ctx node =
     lparen ctx attr.modname_attr_open;
     text ctx attr.modname_attr_name;
     rparen ctx attr.modname_attr_close;
-    dot ctx attr.modname_attr_dot
+    dot ctx attr.modname_attr_dot;
+    dedent_last ctx
 
   | Export_attr attr ->
     text ctx attr.export_attr_tag; (* -export *)
@@ -395,7 +430,8 @@ let rec parse_node ctx node =
     parse_fun_sigs ctx attr.export_attr_funs;
     rbrack ctx attr.export_attr_fun_close;
     rparen ctx attr.export_attr_close;
-    dot ctx attr.export_attr_dot
+    dot ctx attr.export_attr_dot;
+    dedent_last ctx
 
   | Import_attr attr ->
     text ctx attr.import_attr_tag; (* -import *)
@@ -403,11 +439,13 @@ let rec parse_node ctx node =
     lparen ctx attr.import_attr_open;
     text ctx attr.import_attr_module;
     comma ctx attr.import_attr_comma;
+    space ctx attr.import_attr_comma 1;
     lbrack ctx attr.import_attr_fun_open;
     parse_fun_sigs ctx attr.import_attr_funs;
-    lbrack ctx attr.import_attr_fun_close;
+    rbrack ctx attr.import_attr_fun_close;
     rparen ctx attr.import_attr_close;
-    dot ctx attr.import_attr_dot
+    dot ctx attr.import_attr_dot;
+    dedent_last ctx
 
   | Include_attr attr ->
     text ctx attr.include_attr_tag; (* -include *)
@@ -415,7 +453,8 @@ let rec parse_node ctx node =
     lparen ctx attr.include_attr_open;
     erl_string ctx attr.include_attr_file;
     rparen ctx attr.include_attr_close;
-    dot ctx attr.include_attr_dot
+    dot ctx attr.include_attr_dot;
+    dedent_last ctx
 
   | Define_attr attr ->
     text ctx attr.def_attr_tag; (* -define *)
@@ -433,11 +472,12 @@ let rec parse_node ctx node =
     space ctx attr.def_attr_comma 1;
     parse_node ctx attr.def_attr_value;
     rparen ctx attr.def_attr_close;
-    dot ctx attr.def_attr_dot
+    dot ctx attr.def_attr_dot;
+    dedent_last ctx
 
   | Spec_attr attr ->
     text ctx attr.spec_attr_tag; (* -spec *)
-    indent ctx attr.spec_attr_tag.loc;
+    indent ctx attr.spec_attr_tag.loc; (* tag *)
     space ctx attr.spec_attr_tag.loc 1;
     begin match attr.spec_attr_mname with
       | None -> ()
@@ -446,9 +486,9 @@ let rec parse_node ctx node =
         string ctx colon ":"
     end;
     text ctx attr.spec_attr_fname;
-    dedent ctx attr.spec_attr_fname.loc;
-    a_indent ctx attr.spec_attr_fname.loc;
 
+    (* spec_clauses *)
+    a_indent ctx attr.spec_attr_fname.loc;
     Seplist.iter attr.spec_attr_clauses
       ~f:(fun sep clause ->
           (* TODO: guard *)
@@ -464,10 +504,13 @@ let rec parse_node ctx node =
           rarrow ctx clause.spec_clause_arrow;
           space ctx clause.spec_clause_arrow 1;
           parse_spec_type ctx clause.spec_clause_return;
-          Option.iter sep ~f:(semi ctx));
+          match sep with
+          | Some sep -> semi ctx sep
+          | None -> dedent_last ctx);
+    dedent_last ctx;
 
     dot ctx attr.spec_attr_dot;
-    dedent ctx attr.spec_attr_dot
+    dedent_last ctx (* tag *)
 
   | Fun_decl decl ->
     parse_fun_body ctx decl.fun_decl_body;
@@ -511,12 +554,13 @@ let rec parse_node ctx node =
             space ctx sep 1));
     dedent_last ctx;
     dedent_last ctx;
-    space ctx if_.if_end 1;
     string ctx if_.if_end "end"
 
   | Anon_fun fun_ ->
     string ctx fun_.anon_fun_begin "fun";
+    label ctx fun_.anon_fun_begin `Fun;
     parse_fun_body ctx fun_.anon_fun_body;
+    dedent_last ctx;
     dedent_last ctx;
     string ctx fun_.anon_fun_end "end"
 
@@ -567,6 +611,11 @@ let rec parse_node ctx node =
       | _ -> ()
     end;
     rbrack ctx list.list_close
+
+  | Tuple tuple ->
+    lbrace ctx tuple.enc_open;
+    parse_node_list ctx tuple.enc_desc;
+    rbrace ctx tuple.enc_close
 
   | Binary bin ->
     lbin ctx bin.enc_open;
@@ -678,15 +727,19 @@ and parse_fun_body ctx body =
     ~f:(fun sep clause ->
         parse_fun_clause ctx clause;
         Option.iter sep ~f:(fun sep ->
-            semi ctx sep))
+            semi ctx sep));
+  dedent_last ctx
 
 and parse_fun_clause ctx clause =
   let open Context in
+  let is_anon = Option.is_none clause.fun_clause_name in
   Option.iter clause.fun_clause_name ~f:(text ctx);
+
   lparen ctx clause.fun_clause_open;
   parse_node_list ctx clause.fun_clause_ptns;
   rparen ctx clause.fun_clause_close;
   space ctx clause.fun_clause_close 1;
+
   begin match clause.fun_clause_when, clause.fun_clause_guard with
     | Some when_, Some guard ->
       string ctx when_ "when";
@@ -695,8 +748,11 @@ and parse_fun_clause ctx clause =
       space ctx clause.fun_clause_arrow 1;
     | _ -> ()
   end;
+
   rarrow ctx clause.fun_clause_arrow;
   space ctx clause.fun_clause_arrow 1;
+  if is_anon then
+    b_indent ctx clause.fun_clause_arrow `Fun 4;
   parse_node_list ctx clause.fun_clause_body
 
 and parse_guard ctx guard =

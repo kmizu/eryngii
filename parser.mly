@@ -469,19 +469,9 @@ spec_type_list:
 
   spec_type_tuple:
   | LBRACE RBRACE
-  { Ast.Spec_type.Tuple {
-      tuple_open = $1;
-      tuple_elts = None;
-      tuple_close = $2;
-    }
-  }
+  { Ast.(Spec_type.Tuple (enclose $1 None $2)) }
   | LBRACE spec_type_args RBRACE
-  { Ast.Spec_type.Tuple {
-      tuple_open = $1;
-      tuple_elts = Some $2;
-      tuple_close = $3;
-    }
-  }
+  { Ast.(Spec_type.Tuple (enclose $1 (Some $2) $3)) }
 
 spec_type_fun:
   | FUN LPAREN RPAREN

@@ -162,6 +162,7 @@ FILES[] =
 	conf
 	file
 	formatter
+	formatting
 	lexer
 	located
 	location
